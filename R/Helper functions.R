@@ -1182,14 +1182,20 @@ makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x",
 
 
 
-#' Title
+#' Fitting Parameteric Survival models with Expert Opinion
 #'
-#' @param formula 
-#' @param data 
-#' @param distr 
-#' @param method 
-#' @param expert_type 
-#' @param ... 
+#' Implementation of survival models with expert opinion on the survival probabilities or expected difference in survival.
+#' Function is equivalent to the `fit.models` in `survHE` expect for the inclusion of the "expert_type" and "param_expert" arguments. 
+#' Worked examples can be found in the [README](README.md) file.
+#' Note that the default method is "hmc", however, the user may use "mle" or "inla" for analysis without expert opinion.
+#'
+#' @param formula As per \link[survHE]{fit.models}
+#' @param data As per \link[survHE]{fit.models}
+#' @param distr As per \link[survHE]{fit.models}. Note Generalized F model is not available for method = "hmc".
+#' @param method As per \link[survHE]{fit.models}
+#' @param expert_type Either "survival", which indicates expert opinion on the survival function or "mean" (actually anything that does not contain "survival") which represents a belief on difference in survival.
+#' @param param_expert 
+#' @param ... Other arguments may be required depending on the example. See [README](README.md) for details.
 #'
 #' @return
 #' @import survHE
@@ -1197,7 +1203,7 @@ makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x",
 #' @export
 #' 
 #' @examples
-fit.models.expert <- function(formula = NULL, data, distr = NULL, method = "mle", 
+fit.models.expert <- function(formula = NULL, data, distr = NULL, method = "hmc", 
                         expert_type = "survival", param_expert = NULL, ...){
   exArgs <- list(...)
   #will need to be modified

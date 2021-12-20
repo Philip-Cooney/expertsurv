@@ -1,15 +1,14 @@
 Package: expertsurv
-Title: What the Package Does (One Line, Title Case)
+Title: Incorporate Expert Opinion with Parametric Survival models
 Version: 0.0.0.9000
 Authors@R: 
-    person(given = "First",
-           family = "Last",
+    person(given = "Philip",
+           family = "Cooney",
            role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+           email = "phcooney@tcd.ie",
+           comment = c(ORCID = "0000-0001-9649-0195"))
+Description: This package modifies the `survHE` package to enable users to incorporate expert opinion into survival analysis. Expert Opinion can be provided on the survival probabilities at certain timepoint(s) or for the difference in mean survival between two treatment arms.
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
