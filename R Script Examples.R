@@ -535,3 +535,30 @@ cbind(head(survHE.data.model$models$Gompertz[["BUGSoutput"]]$sims.matrix),
 #Check Log-Like!
 #Warning message for Pd
 
+
+
+citation_expert <- citHeader("To cite expertsurv in publications use:")
+citEntry(entry = "Article",
+         title        = "Utilizing Expert Opinion to inform Extrapolation of Survival Models",
+         author       = personList(as.person("Philip Cooney"),
+                                   as.person("Arthur White")),
+         journal      = "arXiv",
+         year         = "2021",
+         pages        = "1--13",
+         url          = "https://arxiv.org/pdf/2112.02288.pdf",
+         
+         textVersion  =
+           paste("Philp Cooney, Arthur White (2021).",
+                 "Utilizing Expert Opinion to inform Extrapolation of Survival Models.",
+                 "arXiv, 1-13.",
+                 "URL https://arxiv.org/pdf/2112.02288.pdf.")
+)
+
+citation("expertsurv")
+
+
+basecit <- system.file("CITATION", package="base")
+source(basecit, echo=TRUE)
+readCitationFile(basecit)
+
+
