@@ -15,19 +15,19 @@ fit.models.expert(
 )
 }
 \arguments{
-\item{formula}{As per \link[survHE]{fit.models}}
+\item{formula}{As per \code{fit.models} on \code{survHE}}
 
-\item{data}{As per \link[survHE]{fit.models}}
+\item{data}{As per \code{fit.models} on \code{survHE}}
 
-\item{distr}{As per \link[survHE]{fit.models}. Note Generalized F model is not available for method = "hmc".}
+\item{distr}{As per \code{fit.models} on \code{survHE}. Note Generalized F model is not available for method = "hmc".}
 
-\item{method}{As per \link[survHE]{fit.models}}
+\item{method}{As per \code{fit.models} on \code{survHE}}
 
 \item{expert_type}{Either "survival", which indicates expert opinion on the survival function or "mean" (actually anything that does not contain "survival") which represents a belief on difference in survival.}
 
 \item{param_expert}{}
 
-\item{...}{Other arguments may be required depending on the example. See \href{README.md}{README} for details.}
+\item{...}{Other arguments may be required depending on the example. See \href{https://github.com/Philip-Cooney/expertsurv/blob/master/README.md}{README} for details.}
 }
 \value{
 
@@ -35,6 +35,6 @@ fit.models.expert(
 \description{
 Implementation of survival models with expert opinion on the survival probabilities or expected difference in survival.
 Function is equivalent to the \code{fit.models} in \code{survHE} expect for the inclusion of the "expert_type" and "param_expert" arguments.
-Worked examples can be found in the \href{README.md}{README} file.
+Worked examples can be found in the \href{https://github.com/Philip-Cooney/expertsurv/blob/master/README.md}{README} file.
 Note that the default method is "hmc", however, the user may use "mle" or "inla" for analysis without expert opinion.
 }

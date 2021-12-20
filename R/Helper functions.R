@@ -1186,21 +1186,22 @@ makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x",
 #'
 #' Implementation of survival models with expert opinion on the survival probabilities or expected difference in survival.
 #' Function is equivalent to the `fit.models` in `survHE` expect for the inclusion of the "expert_type" and "param_expert" arguments. 
-#' Worked examples can be found in the [README](README.md) file.
+#' Worked examples can be found in the [README](https://github.com/Philip-Cooney/expertsurv/blob/master/README.md) file.
 #' Note that the default method is "hmc", however, the user may use "mle" or "inla" for analysis without expert opinion.
 #'
-#' @param formula As per \link[survHE]{fit.models}
-#' @param data As per \link[survHE]{fit.models}
-#' @param distr As per \link[survHE]{fit.models}. Note Generalized F model is not available for method = "hmc".
-#' @param method As per \link[survHE]{fit.models}
+#' @param formula As per `fit.models` on `survHE`
+#' @param data As per `fit.models` on `survHE`
+#' @param distr As per `fit.models` on `survHE`. Note Generalized F model is not available for method = "hmc".
+#' @param method As per `fit.models` on `survHE`
 #' @param expert_type Either "survival", which indicates expert opinion on the survival function or "mean" (actually anything that does not contain "survival") which represents a belief on difference in survival.
 #' @param param_expert 
-#' @param ... Other arguments may be required depending on the example. See [README](README.md) for details.
+#' @param ... Other arguments may be required depending on the example. See [README](https://github.com/Philip-Cooney/expertsurv/blob/master/README.md) for details.
 #'
 #' @return
 #' @import survHE
 #' @importFrom magrittr %>%
 #' @export
+#' @md
 #' 
 #' @examples
 fit.models.expert <- function(formula = NULL, data, distr = NULL, method = "hmc", 
