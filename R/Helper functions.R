@@ -1799,6 +1799,18 @@ compute_ICs_stan <- function(model, distr3, data.stan){
 
   }
   
+  #Gives the same LL 
+  
+  # L<- seq(0.5, 0.9, by = 0.1)
+  # 
+  # L_expert <- 0.95
+  # 
+  # exp(sum(log(L))+log(L_expert))
+  # 
+  # prod(L)*L_expert
+  # exp(sum(log(L)+1/length(L)*(log(L_expert))))
+  
+  
   suppressWarnings(
     WAIC <- loo::loo(logf_comb)[["estimates"]][grep("looic",rownames(loo::loo(logf_comb)[["estimates"]])), "Estimate"]
   )
