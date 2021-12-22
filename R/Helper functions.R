@@ -766,7 +766,7 @@ if(length(unique(expert_df$expert)) !=1){ #Only one expert, Don't need to anythi
     dist = x["dist"],
     param1 = x["param1"],
     param2 = x["param2"],
-    param2 = x["param3"],
+    param3 = x["param3"],
     probs = probs)})
   
   rownames(expert_density) <- probs
