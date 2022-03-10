@@ -1276,6 +1276,8 @@ fit.models <- function (formula = NULL, data, distr = NULL, method = "mle", exAr
                                                                       exArgs)), method, distr, formula, data)
   }
   if (method == "hmc") {
+    
+    adjust_survHE_func()#Make sure the survHE formulaes are compatible
     res <- format_output_fit.models(lapply(distr, function(x) runHMC(x, 
                                                                      exArgs)), method, distr, formula, data)
   }
@@ -2433,6 +2435,8 @@ load_availables <- function(){
 
 print.survHE <-function (x, mod = 1, ...) 
 {
+  adjust_survHE_func()
+  
   exArgs <- list(...)
   availables <- load_availables()
   if (!exists("digits", where = exArgs)) {
@@ -2465,7 +2469,7 @@ print.survHE <-function (x, mod = 1, ...)
 #### Adjusts SurvHE functions:
 
 #error in a rps function 
-
+adjust_survHE_func <- function(){
 
 
 make_sim_hmc <- function (m, t, X, nsim, newdata, dist, summary_stat, ...){
@@ -2674,3 +2678,4 @@ environment(get_stats_hmc) <- environment(tmpfun)
 attributes(get_stats_hmc) <- attributes(tmpfun)  
 assignInNamespace("get_stats_hmc", get_stats_hmc, ns="survHE")
 
+}
