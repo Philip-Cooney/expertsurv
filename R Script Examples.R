@@ -216,13 +216,24 @@ m.all_expert <- expertsurv:::fit.models.expert(formula=Surv(time,event)~1,data=d
                                    pool_type = "linear pool",
                                    k = k1,
                                    times_expert = c(4,5)*12,
-                                   iter = 1000,
+                                   iter = 10000,
                                    chains =n.chains,
                                    priors = list(lno = list(sigma_beta = c(5,5)),
                                                  gga = list(sigma_beta = c(1,1))),
                                    init = list(rps = lapply(rep(1, n.chains), init_fun_rps),
                                                lno = lapply(rep(1, n.chains), init_fun_lnorm)))
-models <- names(m.all_expert_vague$models)
+models <- names(m.all_expert$models)
+
+library(ggmcmc)
+
+#Dirchlet approach will probably not work if changepoint is towards end of sample
+
+gg.obj2_jags <- ggs(coda::as.mcmc(m.all_expert$models$Gamma)) 
+
+gg.obj2_stan <- ggs(m.all_expert$models$`log-Normal`) %>% filter(Parameter %in%  c("beta[1]","St_expert[1]"))
+
+ggmcmc(gg.obj2_stan,file="model_simple-diag-stan.pdf")
+
 
 
 AUC_res_main <-  matrix(NA, nrow = length(models), ncol = 1)
@@ -285,7 +296,7 @@ m.all_expert_vague <- expertsurv:::fit.models.expert(formula=Surv(time,event)~1,
                                                param_expert = param_expert_vague,
                                                k = k1,
                                                times_expert = c(4)*12,
-                                               iter = 1000,
+                                               iter = 10000,
                                                chains =n.chains,
                                                priors = list(lno = list(sigma_beta = c(5,5)),
                                                              gga = list(sigma_beta = c(1,1))),
@@ -307,7 +318,10 @@ DIC_comp <- data.frame(Model =names(m.all_expert_vague$models),
            DIC_expert = m.all_expert$model.fitting$dic,
            DIC_vague = m.all_expert_vague$model.fitting$dic) %>% mutate_if(is.numeric, round,digits = 2)
 
-kable(DIC_comp[order(DIC_comp$DIC_expert),], format="latex")
+
+
+
+kable(DIC_comp[order(DIC_comp$DIC_expert),], format="latex", row.names = F)
 model.fit.plot(m.all_expert_vague,type = "dic")
 #95% credible interval for the Year 4 (linear pool)
 
