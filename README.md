@@ -114,7 +114,7 @@ specifying that we want to use the default linear pooling (rather than
 
     #Set the opinion type to "survival"
 
-    example1  <- expertsurv:::fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
+    example1  <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
                                             distr=c("wei", "gomp"),
                                             method="hmc",
                                             iter = 5000,
@@ -124,9 +124,11 @@ specifying that we want to use the default linear pooling (rather than
                                             param_expert = param_expert_example1)
 
 Both visual fit and model fit statistics highlight that the Weibull
-model is a poor fit to both the expert opinion and data.
+model is a poor fit to both the expert opinion and data (dashed black
+line referring to the 95% confidence region for the experts prior
+belief).
 
-    model.fit.plot(example1, type = "dic")
+    survHE::model.fit.plot(example1, type = "dic")
 
      plot(example1, add.km = T, t = 0:30)+
       theme_light()+
@@ -169,7 +171,7 @@ unique(survHE::data$arm)
 #> [1] 0 1
 ```
 
-    survHE.data.model  <- expertsurv:::fit.models.expert(formula=Surv(time2,status2)~as.factor(arm),data=data2,
+    survHE.data.model  <- fit.models.expert(formula=Surv(time2,status2)~as.factor(arm),data=data2,
                                             distr=c("wei"),
                                             method="hmc",
                                             iter = 5000,
@@ -214,7 +216,7 @@ shape to be positive.
     param_expert3[[1]] <- data.frame(dist = "norm", wi = 1, param1 = 5, param2 = 0.2, param3 = NA)
 
 
-    survHE.data.model  <- expertsurv:::fit.models.expert(formula=Surv(time2,status2)~as.factor(arm),data=data2,
+    survHE.data.model  <- fit.models.expert(formula=Surv(time2,status2)~as.factor(arm),data=data2,
                                                          distr=c("gom"),
                                                          method="hmc",
                                                          iter = 5000,
@@ -234,16 +236,19 @@ Survival difference
 ## Compatability with survHE
 
 As stated in the introduction this package relies on many of the core
-functions of the `survHE` package (Baio 2020). In theory a new version
-of `survHE` could result in a lack of compatibility with this package,
-however, any required changes should be minor. Because the objective of
-this package was to fit the models with expert opinion, plot the
-survival curves and compare the goodness of fit, these capabilities
-(which have been presented in this README) have been tested for
-compatibility. Other functions should (in theory) be compatible,
-however, I have not tested these use cases. If you run in issues, bugs
-or just features which you feel would be useful, please let me know and
-I will investigate and update as required.
+functions of the `survHE` package (Baio 2020) (i.e. note the use of
+`survHE::model.fit.plot` in the first example, meaning that the function
+is sourced directly from `survHE`). In theory a new version of `survHE`
+could result in a lack of compatibility with this package, however, any
+required changes should be minor. Because the objective of this package
+was to fit the models with expert opinion, plot the survival curves and
+compare the goodness of fit, these capabilities (which have been
+presented in this README) have been tested for compatibility. Other
+functions should (in theory) be compatible (again by adding `survHE::`
+to the relevant function), however, I have not tested all these
+potential use cases. If you run in issues, bugs or just features which
+you feel would be useful, please let me know (<phcooney@tcd.ie>) and I
+will investigate and update as required.
 
 Additionally I have made modifications to some of the `survHE` functions
 to accommodate JAGS models (by changing the namespace of the `survHE`
