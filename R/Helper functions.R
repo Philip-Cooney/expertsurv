@@ -502,7 +502,7 @@ makePoolPlot.Data <- function(pool.df,  pool_type = "linear pool", add_hist = TR
   #Calcualte SSQ for the Mixture distribution
   quant_pool <- quantile(x, probs =probs_pool)
   
-  fit.dist <- fitdist(vals = quant_pool, probs = probs_pool)
+  fit.dist <- SHELF::fitdist(vals = quant_pool, probs = probs_pool)
   #See which fits best in terms of AIC.
   fit.mix.list <- list()
   
@@ -703,7 +703,7 @@ makePoolPlot2 <- function(pool.df, x.eval, pool_type = "linear pool"){
   #Calcualte SSQ for the Mixture distribution
   quant_pool <- quantile(x, probs =probs_pool)
   
-  fit.dist <- fitdist(vals = quant_pool, probs = probs_pool, lower = 0, upper = 1)
+  fit.dist <- SHELF::fitdist(vals = quant_pool, probs = probs_pool, lower = 0, upper = 1)
   
   fit.mixnorm <- mixfit(x, ncomp = 2, family= "normal")
   
@@ -810,7 +810,7 @@ for(i in 1:max.timepoints){
   
   timepoint <- paste0("Time ",times[i])
   
-  fit.eval <- fitdist(vals = na.omit(v_array[,,i]),
+  fit.eval <- SHELF::fitdist(vals = na.omit(v_array[,,i]),
                       probs = na.omit(p_mat[,i]), lower = lower_bound, upper = upper_bound)
   
   weights <- na.omit(weights_mat[,i])
@@ -873,7 +873,7 @@ for(i in 1:length(times)){
   p <- matrix(rep(probs, ncol(temp_dens)), nrow = length(probs), ncol = ncol(temp_dens))
   
   # Need to consider upper and lower bounds
-  fit.eval <- fitdist(v, p, lower= lower_bound, upper = upper_bound)
+  fit.eval <- SHELF::fitdist(v, p, lower= lower_bound, upper = upper_bound)
   
   if(!is.null(temp_df$weights)){
     weights <- temp_df$weights
@@ -933,17 +933,6 @@ for(i in 1:length(times)){
 
 
 
-#' Title
-#'
-#' @param dist 
-#' @param param1 
-#' @param param2 
-#' @param probs 
-#'
-#' @return
-#' @export
-#'
-#' @examples
 get_quant_val <- function(dist,param1, param2, param3 = NULL, probs = seq(0.01, 0.98, by = 0.01)){
   if(dist == "t"){
     probs_eval <- as.numeric(param1) + as.numeric(param2)*stats::qt(as.numeric(probs),as.numeric(param3))
@@ -1038,28 +1027,6 @@ cred_int <- function(plt_obj, val = "linear pool",interval = c(0.025, 0.975)){
 }
 
 
-#' Title
-#'
-#' @param fit 
-#' @param xl 
-#' @param xu 
-#' @param d 
-#' @param w 
-#' @param lwd 
-#' @param xlab 
-#' @param ylab 
-#' @param legend_full 
-#' @param ql 
-#' @param qu 
-#' @param nx 
-#' @param addquantile 
-#' @param fs 
-#' @param expertnames 
-#'
-#' @return
-#' @export
-#'
-#' @examples
 makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x", 
                           ylab=expression(f[X](x)), legend_full = TRUE, 
                           ql = NULL, qu = NULL, nx = 500, addquantile = FALSE, fs = 12, 
@@ -1283,7 +1250,7 @@ plot_expert_opinion <- function(object, xl_plt = NULL, xu_plt = NULL, weights = 
     
     object$times_expert <- 2 #Just for compatibility
     
-    expert_dens_list <- expert_dens(object, probs =  seq(0.001, 0.99, by = 0.005))
+    expert_dens_list <- expertsurv:::expert_dens(object, probs =  seq(0.001, 0.99, by = 0.005))
     
     lower <- as.numeric(head(expert_dens_list$expert_density, n = 1)-0.1)
     upper <- as.numeric(tail(expert_dens_list$expert_density, n = 1)+0.1)
@@ -1306,7 +1273,7 @@ plot_expert_opinion <- function(object, xl_plt = NULL, xu_plt = NULL, weights = 
                                        dim(expert_dens_list$expert_density)[2])),
                         ncol = dim(expert_dens_list$expert_density)[2])
     
-    fit_shelf  <- fitdist(vals = expert_dens_list$expert_density,
+    fit_shelf  <- SHELF::fitdist(vals = expert_dens_list$expert_density,
                           probs_mat, lower = lower, upper = upper)
     
     plt <- expertsurv:::makePoolPlot(fit= fit_shelf,

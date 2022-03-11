@@ -28,7 +28,10 @@ Imports:
     rstantools (>= 2.1.1),
     survHE (>= 1.1.2),
     magrittr (>= 2.0),
-    tibble
+    tibble,
+    SHELF,
+    rjags,
+    R2jags
 LinkingTo: 
     BH (>= 1.66.0),
     Rcpp (>= 0.12.0),

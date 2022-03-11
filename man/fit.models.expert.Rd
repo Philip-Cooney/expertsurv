@@ -2,7 +2,7 @@
 % Please edit documentation in R/Helper functions.R
 \name{fit.models.expert}
 \alias{fit.models.expert}
-\title{Fitting Parameteric Survival models with Expert Opinion}
+\title{Fitting Parametric Survival models with Expert Opinion}
 \usage{
 fit.models.expert(
   formula = NULL,
@@ -15,17 +15,24 @@ fit.models.expert(
 )
 }
 \arguments{
-\item{formula}{As per \code{fit.models} on \code{survHE}}
+\item{formula}{As per \code{fit.models} on \texttt{survHE}}
 
-\item{data}{As per \code{fit.models} on \code{survHE}}
+\item{data}{As per \code{fit.models} on \texttt{survHE}}
 
-\item{distr}{As per \code{fit.models} on \code{survHE}. Note Generalized F model is not available for method = "hmc".}
+\item{distr}{As per \code{fit.models} on \texttt{survHE}. Note Generalized F model is not available for method = "hmc".}
 
-\item{method}{As per \code{fit.models} on \code{survHE}}
+\item{method}{As per \code{fit.models} on \texttt{survHE}}
 
 \item{expert_type}{Either "survival", which indicates expert opinion on the survival function or "mean" (actually anything that does not contain "survival") which represents a belief on difference in survival.}
 
-\item{param_expert}{}
+\item{param_expert}{A list containing a dataframe for each timepoint (if applicable). Each dataframe should have columns with the following names and each row representing an expert:
+\itemize{
+\item \strong{dist}: Names of the distribution assigned to each expert which may be "norm", "t", "lnorm", "gamma", "beta".
+\item \strong{wi}: Weight of the expert, if all experts = 1 then equal weights.
+\item \strong{param1}: First parameter of the distribution (e.g. mean for norm distribution). Parameters as per \texttt{SHELF} package.
+\item \strong{param2}: Second parameter of the distribution.
+\item \strong{param3}: Third parameter of the distribution (NA expect for degrees of freedom for t distribution)
+}}
 
 \item{...}{Other arguments may be required depending on the example. See \href{https://github.com/Philip-Cooney/expertsurv/blob/master/README.md}{README} for details.}
 }
@@ -34,7 +41,7 @@ fit.models.expert(
 }
 \description{
 Implementation of survival models with expert opinion on the survival probabilities or expected difference in survival.
-Function is equivalent to the \code{fit.models} in \code{survHE} expect for the inclusion of the "expert_type" and "param_expert" arguments.
+Function is equivalent to the \code{fit.models} in \texttt{survHE} expect for the inclusion of the "expert_type" and "param_expert" arguments.
 Worked examples can be found in the \href{https://github.com/Philip-Cooney/expertsurv/blob/master/README.md}{README} file.
 Note that the default method is "hmc", however, the user may use "mle" or "inla" for analysis without expert opinion.
 }
