@@ -124,9 +124,8 @@ specifying that we want to use the default linear pooling (rather than
                                             param_expert = param_expert_example1)
 
 Both visual fit and model fit statistics highlight that the Weibull
-model is a poor fit to both the expert opinion and data (dashed black
-line referring to the 95% confidence region for the experts prior
-belief).
+model is a poor fit to both the expert opinion and data (black line
+referring to the 95% confidence region for the experts prior belief).
 
     survHE::model.fit.plot(example1, type = "dic")
 
