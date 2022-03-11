@@ -261,6 +261,8 @@ used as the plug-in estimate for the log-likelihood, while we use the
 posterior mean as per the definition of DIC by (Spiegelhalter et al.
 2002), noting that both estimates should be very similar.
 
+## References
+
 <div id="refs" class="references csl-bib-body hanging-indent">
 
 <div id="ref-Baio.2020" class="csl-entry">
