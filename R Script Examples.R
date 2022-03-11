@@ -435,21 +435,34 @@ param_expert_example1[[1]] <- data.frame(dist = c("norm","t"),
                                          param1 = c(0.1,0.12),
                                          param2 = c(0.005,0.005),
                                          param3 = c(NA,3))
+timepoint_expert <- c(14)
+
+plot_opinion1<- plot_expert_opinion(param_expert_example1[[1]], 
+                    weights = param_expert_example1[[1]]$wi)
+ggsave("Vignette_Example 1 - Expert Opinion.png")
+
+cred_int_val <- cred_int(plot_opinion1,val = "linear pool", interval = c(0.025, 0.975))
 
 example1  <- expertsurv:::fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
-                                            distr=c("wei"),
+                                            distr=c("wei", "gomp"),
                                             method="hmc",
                                             iter = 5000,
                                             opinion_type = "survival",
-                                            times_expert = 14, 
+                                            times_expert = timepoint_expert, 
                                             param_expert = param_expert_example1)
+
+model.fit.plot(example1, type = "dic")
+ggsave("Vignette_Example 1 - DIC.png")
 
 
 plot(example1, add.km = T, t = 0:30)+
   theme_light()+
   scale_x_continuous(expand = c(0, 0), limits = c(0,NA), breaks=seq(0, 30, 2)) + 
-  scale_y_continuous(expand = c(0, 0), limits = c(0, NA), breaks=seq(0, 1, 0.05))
+  scale_y_continuous(expand = c(0, 0), limits = c(0, NA), breaks=seq(0, 1, 0.05))+
+  geom_segment(aes(x = 14, y = cred_int_val[1], xend = 14, yend = cred_int_val[2]))
 ggsave("Vignette_Example 1.png")
+
+
 
 ## Example Vignette 2: Opinion on the survival of the comparator arm ----
 param_expert_example2 <- list()

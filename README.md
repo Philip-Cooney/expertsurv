@@ -15,6 +15,15 @@ repeated here.
 The key function is `fit.models.expert` and operates almost identically
 to the `fit.models` function of `survHE`.
 
+## Installation
+
+You can install the released version of expertsurv from
+[GitHub](https://github.com/Philip-Cooney/expertsurv) with:
+
+``` r
+devtools::install_github("Philip-Cooney/expertsurv")
+```
+
 ## Expert Opinion on Survival at timepoints
 
 If we have elicited expert opinion of the survival probability at
@@ -50,12 +59,54 @@ param_expert_example1
 #Naturally we will specify the timepoint for which these probabilities where elicited
 
 timepoint_expert <- 14
+
+
+#In case we wanted a second timepoint -- Just for illustration
+
+# param_expert_example1[[2]] <- data.frame(dist = c("norm","norm"),
+#                                          wi = c(1,1),
+#                                          param1 = c(0.05,0.045),
+#                                          param2 = c(0.005,0.005),
+#                                          param3 = c(NA,NA))
+# 
+# timepoint_expert <- c(timepoint_expert,18)
 ```
+
+If we wanted opinions at multiple timepoints we just include append
+another list (i.e. param\_expert\_example1\[\[2\]\] with the relevant
+parameters) and specify timepoint\_expert as a vector of length 2 with
+the second element being the second timepoint.
 
 For details on assigning distributions to elicited probabilities and
 quantiles see the `SHELF` package (Oakley 2021) and for an overview on
 methodological approaches to eliciting expert opinion see (O’Hagan
-2019).
+2019). We can see both the individual and pooled distributions using the
+following code (note that we could have used the output of the `fitdist`
+function from `SHELF` if we actually elicited quantiles from an expert):
+
+    plot_opinion1<- plot_expert_opinion(param_expert_example1[[1]], 
+                        weights = param_expert_example1[[1]]$wi)
+    ggsave("Vignette_Example 1 - Expert Opinion.png")
+
+For the linear pool we have a bi-modal distribution which has a 95%
+credible interval between 9.15 − 13.2% calculated with the function
+below:
+
+<div class="figure">
+
+<img src="Vignette_Example 1 - Expert Opinion.png" alt="Expert prior distributions" width="2721" />
+<p class="caption">
+Expert prior distributions
+</p>
+
+</div>
+
+    cred_int_val <- cred_int(plot_opinion1,val = "linear pool", interval = c(0.025, 0.975))
+
+We load and fit the data as follows (in this example considering just
+the Weibull and Gompertz models), with pool\_type = “linear pool”
+specifying that we want to use the default linear pooling (rather than
+“log pool”).
 
 
     data2 <- survHE::data %>% rename(status = censored) %>% mutate(time2 = ifelse(time > 10, 10, time),
@@ -64,21 +115,37 @@ methodological approaches to eliciting expert opinion see (O’Hagan
     #Set the opinion type to "survival"
 
     example1  <- expertsurv:::fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
-                                            distr=c("wei"),
+                                            distr=c("wei", "gomp"),
                                             method="hmc",
                                             iter = 5000,
+                                            pool_type = "linear pool", 
                                             opinion_type = "survival",
                                             times_expert = timepoint_expert, 
                                             param_expert = param_expert_example1)
 
+Both visual fit and model fit statistics highlight that the Weibull
+model is a poor fit to both the expert opinion and data.
+
+    model.fit.plot(example1, type = "dic")
+
      plot(example1, add.km = T, t = 0:30)+
       theme_light()+
       scale_x_continuous(expand = c(0, 0), limits = c(0,NA), breaks=seq(0, 30, 2)) + 
-      scale_y_continuous(expand = c(0, 0), limits = c(0, NA), breaks=seq(0, 1, 0.05))
+      scale_y_continuous(expand = c(0, 0), limits = c(0, NA), breaks=seq(0, 1, 0.05))+
+      geom_segment(aes(x = 14, y = cred_int_val[1], xend = 14, yend = cred_int_val[2]))
 
 <div class="figure">
 
-<img src="Vignette_Example 1.png" alt="Survival function with Expert prior" width="2025" />
+<img src="Vignette_Example 1 - DIC.png" alt="Model Comparison" width="2721" />
+<p class="caption">
+Model Comparison
+</p>
+
+</div>
+
+<div class="figure">
+
+<img src="Vignette_Example 1.png" alt="Survival function with Expert prior" width="2721" />
 <p class="caption">
 Survival function with Expert prior
 </p>
@@ -164,6 +231,36 @@ Survival difference
 
 </div>
 
+## Compatability with survHE
+
+As stated in the introduction this package relies on many of the core
+functions of the `survHE` package (Baio 2020). In theory a new version
+of `survHE` could result in a lack of compatibility with this package,
+however, any required changes should be minor. Because the objective of
+this package was to fit the models with expert opinion, plot the
+survival curves and compare the goodness of fit, these capabilities
+(which have been presented in this README) have been tested for
+compatibility. Other functions should (in theory) be compatible,
+however, I have not tested these use cases. If you run in issues, bugs
+or just features which you feel would be useful, please let me know and
+I will investigate and update as required.
+
+Additionally I have made modifications to some of the `survHE` functions
+to accommodate JAGS models (by changing the namespace of the `survHE`
+environment). These should have no impact on the operation of `survHE`
+and these changes are only invoked when `expertsurv` is loaded. However,
+in the situation where you would like to revert to `survHE` functions
+during the session, simply run the following:
+
+    unloadNamespace("survHE") #Unload survHE and associated name spaces
+    require("survHE") #reload survHE
+
+One practical difference between the packages is the calculation of DIC
+(Deviance Information Criterion). In `survHE` the posterior median is
+used as the plug-in estimate for the log-likelihood, while we use the
+posterior mean as per the definition of DIC by (Spiegelhalter et al.
+2002), noting that both estimates should be very similar.
+
 <div id="refs" class="references csl-bib-body hanging-indent">
 
 <div id="ref-Baio.2020" class="csl-entry">
@@ -195,6 +292,16 @@ Scientific.” *The American Statistician* 73 (sup1): 69–81.
 
 Oakley, Jeremy. 2021. *SHELF: Tools to Support the Sheffield Elicitation
 Framework*. <https://CRAN.R-project.org/package=SHELF>.
+
+</div>
+
+<div id="ref-Spiegelhalter.2003" class="csl-entry">
+
+Spiegelhalter, David J., Nicola G. Best, Bradley P. Carlin, and Angelika
+Van Der Linde. 2002. “Bayesian Measures of Model Complexity and Fit.”
+*Journal of the Royal Statistical Society: Series B (Statistical
+Methodology)* 64 (4): 583–639.
+https://doi.org/<https://doi.org/10.1111/1467-9868.00353>.
 
 </div>
 
