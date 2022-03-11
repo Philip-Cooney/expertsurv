@@ -745,10 +745,17 @@ expert_dens <- function(expert_df, probs =  seq(0.01, 0.98, by = 0.002)){
   
 if(length(unique(expert_df$expert)) !=1){ #Only one expert, Don't need to anything
   
-  if(is.null(expert_df$weights)){
+  
+  if(is.null(expert_df$weights) && is.null(expert_df$wi)){
     warning("No weights given.. assuming equally weighted expert opinion")
     expert_df$weights <- 1
   }
+  
+  if(!is.null(expert_df$wi)){
+    expert_df$weights <- expert_df$wi
+  }
+  
+  
   
   expert_df_sum <- expert_df %>% group_by(times_expert) %>% arrange(times_expert) %>%
                   summarize(sum_weights = sum(weights))
@@ -996,6 +1003,40 @@ get_density <- function(dist, param1, param2, param3 = NULL, x = seq(0.01, 0.98,
 }
 
 
+#' Credible interval for pooled distribution
+#'
+#' Returns the interval based on defined quantiles. 
+#' The approach used only provides an approximate (although quite accurate) integral.  
+#' @param plt_obj A plot object from `plot_expert_opinion`.
+#' @param val The name of the opinion for which the interval will be generated.
+#' @param interval A vector of the upper and lower probabilities. Default is the standard 95% interval 
+#'
+#' @return
+#' @export
+#'
+#' @examples \dontrun{
+#' cred_int(plot_opinion1,val = "linear pool", interval = c(0.025, 0.975))
+#' }
+#' 
+cred_int <- function(plt_obj, val = "linear pool",interval = c(0.025, 0.975)){
+  
+  plt_df <- plt_obj$data %>% filter(expert == val) %>% data.frame()
+  
+  total_integral <- sfsmisc::integrate.xy(plt_df$x, plt_df$fx)
+  partial_integral <- rep(NA, nrow(plt_df))
+  partial_integral[1] <- 0
+  for(i in 2:nrow(plt_df)){
+    partial_integral[i] <- sfsmisc::integrate.xy(plt_df$x[1:i], plt_df$fx[1:i])/total_integral
+  }
+  
+  plt_df$cdf <- partial_integral
+  
+  limits <- c(plt_df$x[which.min(abs(plt_df$cdf - interval[1]))],plt_df$x[which.min(abs(plt_df$cdf - interval[2]))])
+  names(limits) <- c("lower", "upper")
+  return(limits)
+  
+}
+
 
 #' Title
 #'
@@ -1021,7 +1062,7 @@ get_density <- function(dist, param1, param2, param3 = NULL, x = seq(0.01, 0.98,
 #' @examples
 makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x", 
                           ylab=expression(f[X](x)), legend_full = TRUE, 
-                          ql = NULL, qu = NULL, nx = 200, addquantile = FALSE, fs = 12, 
+                          ql = NULL, qu = NULL, nx = 500, addquantile = FALSE, fs = 12, 
                           expertnames = NULL){
   lpname <- c("linear pool", "log pool")
   
@@ -1182,19 +1223,135 @@ makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x",
 
 
 
-#' Fitting Parameteric Survival models with Expert Opinion
+#' Plotting Pooled Expert Opinion
+#'
+#' Returns a ggplot with the individual expert opinions along with the pooled distributions (both linear and logarithmic).
+#'
+#' @param object Either a object of class elicitation (from `SHELF`) or a dataframe with parameters of the distribution (see Example below).
+#' @param xl_plt Optionally set the lower bound for the plot
+#' @param xu_plt Optionally set the upper bound for the plot
+#' @param weights A vector with the weight of each expert. If omitted, set to equal weights.
+#'
+#' @return
+#' @export
+#'
+#' @examples \dontrun{ 
+#'  expert_df <- data.frame(dist = c("norm","t"), #Distribution Name
+#'                          wi = c(1/3,2/3), #Expert weights
+#'                          param1 = c(0.3,0.40), #Parameter 1
+#'                          param2 = c(0.05,0.05),# Parameter 2
+#'                          param3 = c(NA,3)) #Parameter 3: Only t-distribution
+#'  plot_expert_opinion(expert_df , weights = expert_df$wi)}
+#'                                                         
+plot_expert_opinion <- function(object, xl_plt = NULL, xu_plt = NULL, weights = NULL){
+  
+  
+  if(is.null(weights)){
+    weights <- 1
+  }
+  
+  
+  
+  if(class(object) == "elicitation"){
+    
+    if(is.null(xl_plt)){
+      xl_plt <- min(object$limits["lower"])
+    }
+    if(is.null(xu_plt)){
+      xu_plt <- max(object$limits["upper"])
+      
+    }
+    
+    plt <- expertsurv:::makePoolPlot(fit= object,
+                                     xl =xl_plt,
+                                     xu =xu_plt,
+                                     d = "best",
+                                     w = weights,
+                                     lwd =1,
+                                     xlab = "x",
+                                     ylab =expression(f[X](x)),
+                                     legend_full = TRUE,
+                                     ql = NULL,
+                                     qu = NULL,
+                                     nx = 200,
+                                     addquantile = FALSE,
+                                     fs = 12,
+                                     expertnames = NULL)
+    
+    
+  }else{
+    
+    object$times_expert <- 2 #Just for compatibility
+    
+    expert_dens_list <- expert_dens(object, probs =  seq(0.001, 0.99, by = 0.005))
+    
+    lower <- as.numeric(head(expert_dens_list$expert_density, n = 1)-0.1)
+    upper <- as.numeric(tail(expert_dens_list$expert_density, n = 1)+0.1)
+    
+    # if(is.null(lower) || is.null(upper)){
+    #   stop("Upper and lower bounds required for distributions")
+    # }
+    
+    if(is.null(xl_plt)){
+      xl_plt <- min(lower)
+    }
+    if(is.null(xu_plt)){
+      xu_plt <- max(upper)
+      
+    }
+    
+    
+    
+    probs_mat <- matrix(as.numeric(rep(rownames(expert_dens_list$expert_density), 
+                                       dim(expert_dens_list$expert_density)[2])),
+                        ncol = dim(expert_dens_list$expert_density)[2])
+    
+    fit_shelf  <- fitdist(vals = expert_dens_list$expert_density,
+                          probs_mat, lower = lower, upper = upper)
+    
+    plt <- expertsurv:::makePoolPlot(fit= fit_shelf,
+                                     xl = xl_plt,
+                                     xu = xu_plt,
+                                     d = "best",
+                                     w = weights,
+                                     lwd =1,
+                                     xlab = "x",
+                                     ylab =expression(f[X](x)),
+                                     legend_full = TRUE,
+                                     ql = NULL,
+                                     qu = NULL,
+                                     nx = 200,
+                                     addquantile = FALSE,
+                                     fs = 12,
+                                     expertnames = NULL)
+    
+    
+  }
+  
+  return(plt)
+}
+
+
+#' Fitting Parametric Survival models with Expert Opinion
 #'
 #' Implementation of survival models with expert opinion on the survival probabilities or expected difference in survival.
-#' Function is equivalent to the `fit.models` in `survHE` expect for the inclusion of the "expert_type" and "param_expert" arguments. 
+#' Function is equivalent to the `fit.models` in \texttt{survHE} expect for the inclusion of the "expert_type" and "param_expert" arguments. 
 #' Worked examples can be found in the [README](https://github.com/Philip-Cooney/expertsurv/blob/master/README.md) file.
 #' Note that the default method is "hmc", however, the user may use "mle" or "inla" for analysis without expert opinion.
 #'
-#' @param formula As per `fit.models` on `survHE`
-#' @param data As per `fit.models` on `survHE`
-#' @param distr As per `fit.models` on `survHE`. Note Generalized F model is not available for method = "hmc".
-#' @param method As per `fit.models` on `survHE`
+#' @param formula As per `fit.models` on \texttt{survHE}
+#' @param data As per `fit.models` on \texttt{survHE}
+#' @param distr As per `fit.models` on \texttt{survHE}. Note Generalized F model is not available for method = "hmc".
+#' @param method As per `fit.models` on \texttt{survHE}
 #' @param expert_type Either "survival", which indicates expert opinion on the survival function or "mean" (actually anything that does not contain "survival") which represents a belief on difference in survival.
-#' @param param_expert 
+#' @param param_expert A list containing a dataframe for each timepoint (if applicable). Each dataframe should have columns with the following names and each row representing an expert:
+#'  \itemize{
+#'   \item \strong{dist}: Names of the distribution assigned to each expert which may be "norm", "t", "lnorm", "gamma", "beta".
+#'   \item \strong{wi}: Weight of the expert, if all experts = 1 then equal weights.
+#'   \item \strong{param1}: First parameter of the distribution (e.g. mean for norm distribution). Parameters as per \texttt{SHELF} package. 
+#'   \item \strong{param2}: Second parameter of the distribution.
+#'   \item \strong{param3}: Third parameter of the distribution (NA expect for degrees of freedom for t distribution)
+#' }
 #' @param ... Other arguments may be required depending on the example. See [README](https://github.com/Philip-Cooney/expertsurv/blob/master/README.md) for details.
 #'
 #' @return
