@@ -1295,7 +1295,7 @@ plot_expert_opinion <- function(object, xl_plt = NULL, xu_plt = NULL, weights = 
     
   }
   
-  return(plt)
+  return(plt+theme_bw())
 }
 
 
