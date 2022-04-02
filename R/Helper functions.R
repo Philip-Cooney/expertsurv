@@ -1885,81 +1885,55 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
 # distr3 <- "weib"
 # data.stan <- stan.data
 
-compute_ICs_stan <- function(model, distr3, data.stan){
+compute_ICs_stan <-function (model, distr3, data.stan){
   if (distr3 %!in% c("gam", "gga", "gom")) {
     beta <- rstan::extract(model)$beta
-  }else{ # gam, gga, gom
-    beta <- model$BUGSoutput$sims.matrix[ , grep("beta",colnames(model$BUGSoutput$sims.matrix))]
+  }
+  else {
+    beta <- model$BUGSoutput$sims.matrix[, grep("beta", 
+                                                colnames(model$BUGSoutput$sims.matrix))]
   }
   beta.hat <- apply(beta, 2, mean)
   linpred <- beta %*% t(data.stan$X)
   linpred.hat <- beta.hat %*% t(data.stan$X)
-  
-  #if (distr3 %!in% c("gam", "gga", "gom", "wei")) {
-  #model.eval  <- paste0("survHE:::lik_", distr3)
-  #}else{
-    model.eval <-  paste0("lik_", distr3)
-  #}
-  
-  
+  model.eval <- paste0("lik_", distr3)
   out = do.call(what = eval(parse(text = model.eval)), args = list(distr3, 
-                                                           linpred, linpred.hat, model, data.stan))
-  
-
-
+                                                                   linpred, linpred.hat, model, data.stan))
   logf = out$logf
   logf.hat = out$logf.hat
   npars = out$npars
-  # f = out$f
-  # f.bar = out$f.bar
-  # s = out$s
-  # s.bar = out$s.bar
-  
-  
-  #loo::waic(logf)
-  #loo::loo(logf)
   logf_comb <- matrix(nrow = nrow(logf), ncol = ncol(logf))
-
-  for(i in 1:nrow(logf)){
-    logf_comb[i,] <-   logf[i,]+out$logf.expert[i]/ncol(logf)
-
+  for (i in 1:nrow(logf)) {
+    logf_comb[i, ] <- logf[i, ] + out$logf.expert[i]/ncol(logf)
+  }
+  tryCatch(suppressWarnings(WAIC <- loo::loo(logf_comb)[["estimates"]][grep("looic", 
+                                                                   rownames(loo::loo(logf_comb)[["estimates"]])), "Estimate"]),
+           error = function(e)
+             print("Cannot Evaluate WAIC"))
+  
+  if(is.null(WAIC)){
+    WAIC <- Inf
   }
   
-  #Gives the same LL 
-  
-  # L<- seq(0.5, 0.9, by = 0.1)
-  # 
-  # L_expert <- 0.95
-  # 
-  # exp(sum(log(L))+log(L_expert))
-  # 
-  # prod(L)*L_expert
-  # exp(sum(log(L)+1/length(L)*(log(L_expert))))
-  
-  
-  suppressWarnings(
-    WAIC <- loo::loo(logf_comb)[["estimates"]][grep("looic",rownames(loo::loo(logf_comb)[["estimates"]])), "Estimate"]
-  )
-  
-  PML <- -2*sum(log(nrow(logf_comb)/colSums(1/exp(logf_comb))))
-  
-  loglik <- apply(logf, 1, sum)+out$logf.expert
+  PML <- -2 * sum(log(nrow(logf_comb)/colSums(1/exp(logf_comb))))
+  loglik <- apply(logf, 1, sum) + out$logf.expert
   loglik.bar <- apply(logf.hat, 1, sum) + out$logf.hat.expert
   D.theta <- -2 * loglik
   D.bar <- -2 * loglik.bar
   pD <- mean(D.theta) - D.bar
-  
-  if(pD < 0){
-      warning(paste0("pD is ",round(pD), " for ", distr3,"; DIC estimates unreliable, use WAIC or PML."))
+  if (pD < 0) {
+    warning(paste0("pD is ", round(pD), " for ", distr3, 
+                   "; DIC estimates unreliable, use WAIC or PML."))
   }
   pV <- 0.5 * var(D.theta)
   dic <- mean(D.theta) + pD
   dic2 <- mean(D.theta) + pV
   aic <- D.bar + 2 * npars
   bic <- D.bar + npars * log(data.stan$n)
-  list(aic = aic, bic = bic, dic = dic, dic2 = dic2, waic = WAIC, pml = PML)
+  list(aic = aic, bic = bic, dic = dic, dic2 = dic2, waic = WAIC, 
+       pml = PML)
 }
-# 
+           
 # hmc = c(Exponential = "exp",Gamma = "gam", GenGamma = "gga", 
 #         Gompertz = "gom", 
 #         RP = "rps", WeibullAF = "wei", WeibullPH = "wph", 
