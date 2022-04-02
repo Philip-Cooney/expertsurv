@@ -778,7 +778,7 @@ if(length(unique(expert_df$expert)) !=1){ #Only one expert, Don't need to anythi
   
   rownames(expert_density) <- probs
   
-  list(expert_df = expert_df  %>% select(-sum_weights),
+  list(expert_df = expert_df  %>% dplyr::select(-sum_weights),
        expert_density = expert_density)
   
 }
