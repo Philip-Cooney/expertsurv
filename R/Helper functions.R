@@ -1911,7 +1911,7 @@ compute_ICs_stan <-function (model, distr3, data.stan){
            error = function(e)
              print("Cannot Evaluate WAIC"))
   
-  if(is.null(WAIC)){
+  if(!exists("WAIC")){
     WAIC <- Inf
   }
   
