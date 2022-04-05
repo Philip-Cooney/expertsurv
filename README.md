@@ -289,8 +289,31 @@ and (similar to (Ouwens 2018)) would be to:
 As we can see the 90% credible intervals are very wide, narrowing only
 at the timepoint at which there is expert opinion.
 
-![Predicted survival without
-data](README_files/figure-gfm/unnamed-chunk-9-1.png)
+
+    nsims <- 10000
+    Surv_samp <- rbeta(nsims, 10, 100)
+    ancs <- runif(nsims, 0, 10) #shape
+    time_expert <- 14
+    loc <- exp((ancs*log(time_expert)-log(-log(Surv_samp)))/ancs)
+
+    time <- c(0:20)
+    res <- cbind(ancs,loc)
+
+    St <- apply(res, 1, function(x){pweibull(time,x[1],x[2], lower.tail = F )})
+    St_sum <- apply(St, 1, quantile, probs = c(0.1, 0.9), na.rm = T)
+
+    plot(y = St_sum[1,], x = time, type= "l", xlab = "Time", ylab = "St",
+    main = "90% interval for survival with St from Beta(10,100)")
+    lines(y = St_sum[2,], x = time )
+
+<div class="figure">
+
+<img src="Survival without Data.png" alt="Predicted survival without data" width="480" />
+<p class="caption">
+Predicted survival without data
+</p>
+
+</div>
 
 ## Model Diagnostics
 

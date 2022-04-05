@@ -239,7 +239,7 @@ Using Stan and JAGS to simulate these "posteriors" is inefficient and because of
  
  As we can see the 90% credible intervals are very wide, narrowing only at the timepoint at which there is expert opinion.
 
-```{r, echo = F, warning=F,fig.cap = "Predicted survival without data"}
+```
 
 nsims <- 10000
 Surv_samp <- rbeta(nsims, 10, 100)
@@ -253,9 +253,14 @@ res <- cbind(ancs,loc)
 St <- apply(res, 1, function(x){pweibull(time,x[1],x[2], lower.tail = F )})
 St_sum <- apply(St, 1, quantile, probs = c(0.1, 0.9), na.rm = T)
 
-plot(y = St_sum[1,], x = time, type= "l", xlab = "Time", ylab = "St", main = "90% interval for survival with St from Beta(10,100)")
+plot(y = St_sum[1,], x = time, type= "l", xlab = "Time", ylab = "St",
+main = "90% interval for survival with St from Beta(10,100)")
 lines(y = St_sum[2,], x = time )
 
+```
+
+```{r echo = FALSE, fig.cap = "Predicted survival without data"}
+knitr::include_graphics("Survival without Data.png")
 ```
 
 ## Model Diagnostics
