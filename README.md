@@ -265,6 +265,55 @@ used as the plug-in estimate for the log-likelihood, while we use the
 posterior mean as per the definition of DIC by (Spiegelhalter et al.
 2002), noting that both estimates should be very similar.
 
+## Survival curves implied by Expert Opinion alone
+
+In some situations it may be of interest to see the range of predicted
+survival functions given the expert opinion. The easiest solution is to
+simulate two or more observations. In order to remove the effect of
+these data points we supply the following argument to the
+`fit.models.expert` function which essentially sets the likelihood
+contribution to zero for these points:
+
+    a0 = rep(0.001,nrow(df1))
+
+Using Stan and JAGS to simulate these “posteriors” is inefficient and
+because of lack of identifiability (due to having no data), Markov Chain
+Monte Carlo diagnostics will suggest there is a problem. A more
+efficient approach for the Weibull distribution is sketched out below
+and (similar to (Ouwens 2018)) would be to:
+
+-   Simulate times from the Survival distribution
+-   Simulate values of the shape from a vague distribution
+-   Reexpress the scale in terms of the shape
+
+As we can see the 90% credible intervals are very wide, narrowing only
+at the timepoint at which there is expert opinion.
+
+![Predicted survival without
+data](README_files/figure-gfm/unnamed-chunk-9-1.png)
+
+## Model Diagnostics
+
+As this is a Bayesian analysis convergence diagnostics should be
+performed. Poor convergence can be observed for many reasons, however,
+because of our use of expert opinion my be a symptom of conflict between
+the observed data and the expert’s opinion.
+
+Default priors should work in most situations, but still need to be
+considered. At a minimum the Bayesian results without expert opinion
+should be compared against the maximum likelihood estimates. If
+considerable differences are present the prior distributions should be
+investigated.
+
+Because the analysis is done in JAGS and Stan we can leverage the
+`ggmcmc` package:
+
+    #For Stan Models # Log-Normal, RP, Exponential, Weibull
+    ggmcmc(ggs(as.mcmc(example1$models$`Gen. Gamma`)), file = "Gengamma.pdf")
+
+    #For JAGS Models # Gamma, Gompertz, Generalized Gamma
+    ggmcmc(ggs(as.mcmc(example1$models$`Gamma`)), file = "Gamma.pdf")
+
 ## References
 
 <div id="refs" class="references csl-bib-body hanging-indent">
@@ -298,6 +347,16 @@ Scientific.” *The American Statistician* 73 (sup1): 69–81.
 
 Oakley, Jeremy. 2021. *SHELF: Tools to Support the Sheffield Elicitation
 Framework*. <https://CRAN.R-project.org/package=SHELF>.
+
+</div>
+
+<div id="ref-Ouwens.2018" class="csl-entry">
+
+Ouwens, Mario. 2018. “Use of Clinical Opinion in the Estimation of
+Survival Extrapolation Distributions.” *ISPOR EU 2018 - Use of Clinical
+Opinion in the Estimation of Survival Extrapolation Distributions*.
+ISPOR.
+<https://www.ispor.org/docs/default-source/presentations/91714pdf.pdf?sfvrsn=a5b2756f_0>.
 
 </div>
 

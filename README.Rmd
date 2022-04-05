@@ -223,4 +223,58 @@ require("survHE") #reload survHE
 ```
 One practical difference between the packages is the calculation of DIC (Deviance Information Criterion). In  $\texttt{survHE}$ the posterior median is used as the plug-in estimate for the log-likelihood, while we use the posterior mean as per the definition of DIC by [@Spiegelhalter.2003], noting that both estimates should be very similar. 
 
+
+## Survival curves implied by Expert Opinion alone
+
+In some situations it may be of interest to see the range of predicted survival functions given the expert opinion. The easiest solution is to simulate two or more observations. In order to remove the effect of these data points we supply the following argument to the `fit.models.expert` function which essentially sets the likelihood contribution to zero for these points:
+
+```
+a0 = rep(0.001,nrow(df1))
+```
+Using Stan and JAGS to simulate these "posteriors" is inefficient and because of lack of identifiability (due to having no data), Markov Chain Monte Carlo diagnostics will suggest there is a problem. A more efficient approach for the Weibull distribution is sketched out below and (similar to [@Ouwens.2018]) would be to:
+
+ - Simulate times from the Survival distribution 
+ - Simulate values of the shape from a vague distribution
+ - Reexpress the scale in terms of the shape 
+ 
+ As we can see the 90% credible intervals are very wide, narrowing only at the timepoint at which there is expert opinion.
+
+```{r, echo = F, warning=F,fig.cap = "Predicted survival without data"}
+
+nsims <- 10000
+Surv_samp <- rbeta(nsims, 10, 100)
+ancs <- runif(nsims, 0, 10) #shape
+time_expert <- 14
+loc <- exp((ancs*log(time_expert)-log(-log(Surv_samp)))/ancs)
+
+time <- c(0:20)
+res <- cbind(ancs,loc)
+
+St <- apply(res, 1, function(x){pweibull(time,x[1],x[2], lower.tail = F )})
+St_sum <- apply(St, 1, quantile, probs = c(0.1, 0.9), na.rm = T)
+
+plot(y = St_sum[1,], x = time, type= "l", xlab = "Time", ylab = "St", main = "90% interval for survival with St from Beta(10,100)")
+lines(y = St_sum[2,], x = time )
+
+```
+
+## Model Diagnostics
+
+As this is a Bayesian analysis convergence diagnostics should be performed. Poor convergence can be observed for many reasons, however, because of our use of expert opinion my be a symptom of conflict between the observed data and the expert's opinion. 
+
+Default priors should work in most situations, but still need to be considered. At a minimum the Bayesian results without expert opinion should be compared against the maximum likelihood estimates. If considerable differences are present the prior distributions should be investigated.  
+
+Because the analysis is done in JAGS and Stan we can leverage the `ggmcmc` package:
+
+```
+#For Stan Models # Log-Normal, RP, Exponential, Weibull
+ggmcmc(ggs(as.mcmc(example1$models$`Gen. Gamma`)), file = "Gengamma.pdf")
+
+#For JAGS Models # Gamma, Gompertz, Generalized Gamma
+ggmcmc(ggs(as.mcmc(example1$models$`Gamma`)), file = "Gamma.pdf")
+
+```
+
+
+
 ## References 
