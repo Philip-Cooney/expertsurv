@@ -1,7 +1,7 @@
-install.packages("survHE", lib ='~/R-packages/')
-install.packages("ggmcmc", lib ='~/R-packages/')
+# install.packages("survHE", lib ='~/R-packages/')
+# install.packages("ggmcmc", lib ='~/R-packages/')
 
-devtools::install_github("Philip-Cooney/expertsurv", lib =  '~/R-packages/')
+#devtools::install_github("Philip-Cooney/expertsurv", lib =  '~/R-packages/')
 #remove.packages("expertsurv", lib = '~/R-packages/')
 #remove.packages("survHE", lib = '~/R-packages/')
 library("expertsurv", lib.loc = '~/R-packages/')

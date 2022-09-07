@@ -5,7 +5,10 @@ functions {
   // Defines the log hazard
   vector log_haz (vector t, real shape, vector scale) {
     vector[num_elements(t)] log_haz;
-    log_haz = log(shape)+(shape-1)*log(t ./ scale)-log(scale);
+    //log_haz = log(shape)+(shape-1)*log(t ./ scale)-log(scale);
+        for(i in 1:num_elements(t)){
+          log_haz[i] = log(shape) +log(scale[i])+  (shape-1)*log(t[i]);
+        }
     return log_haz;
   }
   
@@ -13,7 +16,7 @@ functions {
   vector log_S (vector t, real shape, vector scale) {
     vector[num_elements(t)] log_S;
     for (i in 1:num_elements(t)) {
-      log_S[i] = -pow((t[i]/scale[i]),shape);
+      log_S[i] = -scale[i]*pow(t[i],shape);
     }
     return log_S;
   }
@@ -22,7 +25,7 @@ functions {
     // Defines the log survival indvidual
   real log_Sind (real t, real shape, real scale) {
 	real log_Sind;
-      log_Sind = -pow((t/scale),shape);
+      log_Sind = -scale*pow(t,shape);
     return log_Sind;
   }
   
@@ -30,7 +33,13 @@ functions {
       // Defines difference in expected survival
   real Surv_diff ( real shape, real scale_trt, real scale_comp) {
 	real Surv_diff;
-      Surv_diff = (scale_trt-scale_comp)*tgamma(1 +1/shape);
+	real scale_trt_mod;
+	real scale_comp_mod;
+	
+	scale_trt_mod = pow(scale_trt,-1/shape);
+	scale_comp_mod = pow(scale_comp,-1/shape);
+	
+  Surv_diff = (scale_trt_mod-scale_comp_mod)*tgamma(1 +1/shape);
     return Surv_diff;
   }
   
@@ -93,7 +102,11 @@ functions {
     }
     
       
-    return(log(sum(dens)));
+      if(pool_type == 1){
+      return(log(sum(dens)));
+      }else{
+      return(log(prod(dens)));
+      }
     
   }
   
@@ -105,10 +118,10 @@ data {
   vector[n] d;            // censoring indicator (1=observed, 0=censored)
   int H;                  // number of covariates
   matrix[n,H] X;          // matrix of covariates (with n rows and H columns)
-  vector[H] mu_beta;	  // mean of the covariates coefficients
-  vector<lower=0> [H] sigma_beta;   // sd of the covariates coefficients
-  real<lower=0> a_alpha;
-  real<lower=0> b_alpha;
+  vector[H] beta_lower;	    //lower bound for the covariate coefficients
+  vector[H] beta_upper;   // upper bound for the covariate coefficients
+  real<lower=0> alpha_lower;
+  real<lower=0> alpha_upper;
   vector[n] a0;  
   int n_time_expert;
   int<lower = 0, upper = 1> St_indic; // 1 Expert opinion on survival @ timepoint ; 0 Expert opinion on survival difference
@@ -123,20 +136,28 @@ data {
   real param_expert[max(n_experts),5,n_time_expert];
   vector[St_indic ? n_time_expert : 0] time_expert;
 
+  real St_lower;
+  real St_upper;
 
-  
-  
+  int<lower = 0, upper = 1> expert_plus_data;
+
 }
 
 parameters {
-  vector[H] beta;         // Coefficients in the linear predictor (including intercept)
+  vector[H] beta_exp;         // Coefficients in the linear predictor (including intercept)
   real<lower=0> alpha;    // shape parameter
 }
 
 transformed parameters {
+  vector[H] beta;
   vector[n] linpred;
   vector[n] mu;
-  vector[n_time_expert] St_expert;
+  vector<lower=St_lower,upper=St_upper>[n_time_expert] St_expert;
+ 
+  for(i in 1:H){
+    beta[i] = log(beta_exp[i]); // Transformation to make it linear on the outcome scale (i.e. exp)
+  }
+
 
   linpred = X*beta;
   for (i in 1:n) {
@@ -157,9 +178,13 @@ transformed parameters {
 }
 
 model {
-  alpha ~ gamma(a_alpha,b_alpha);
-  beta ~ normal(mu_beta,sigma_beta);
-  t ~ surv_weibullAF(d,alpha,mu, a0);
+  alpha ~ uniform(alpha_lower,alpha_upper);
+   beta_exp ~ uniform(beta_lower, beta_upper);
+  
+  if(expert_plus_data){
+     t ~ surv_weibullAF(d,alpha,mu, a0);
+  }
+
   
   for (i in 1:n_time_expert){
       

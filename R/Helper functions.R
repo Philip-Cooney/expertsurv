@@ -939,6 +939,9 @@ get_quant_val <- function(dist,param1, param2, param3 = NULL, probs = seq(0.01, 
     return(probs_eval)
      
   }else{
+    if(dist == "normal"){
+      dist <- "norm"
+    }
     probs <- paste0(probs, collapse = ",")
     
     probs_eval <-  paste0("q",dist,
@@ -960,6 +963,10 @@ get_cdf_val <- function(dist,param1, param2, param3 = NULL, vals = seq(0.01, 0.9
     return(probs_eval)
     
   }else{
+    
+    if(dist == "normal"){
+      dist <- "norm"
+    }
     vals <- paste0(vals, collapse = ",")
     
     probs_eval <-  paste0("p",dist,
@@ -1502,21 +1509,74 @@ runHMC <- function (x, exArgs){
   else {
     refresh = max(iter/10, 1)
   }
+  
+
+  
   d <- names(availables[[method]][match(d3, availables[[method]])])
+
+
   data.stan <- make_data_stan(formula, data, d3, exArgs)
+  
+  if (exists("expert_plus_data", where = exArgs)) {
+    data.stan$expert_plus_data <- exArgs$expert_plus_data
+  }else{
+    data.stan$expert_plus_data <- 1
+  }
   
   tic <- proc.time()
   
   if (d3 %in% c("gam", "gga", "gom")){
     data.jags <- data.stan
+    if(data.jags$expert_plus_data==0){
+      #data.jags$n <- 0
+      DIC_eval <- F
+    }else{
+      DIC_eval <- T
+    }
+    
+    #To generate Inits
+    interval.bound <- 10
+    
+    surv.obj <- survfit(formula=as.formula(formula),data=data)
+    surv_point <- surv.obj$surv[which.min(abs(surv.obj$surv-0.5))]
+    surv_time <- surv.obj$time[which.min(abs(surv.obj$surv-0.5))]
+    
+    plot_opinion1<- plot_expert_opinion(exArgs$param_expert[[1]], 
+                                        weights = exArgs$param_expert[[1]]$wi)
+    
+    if(is.null(exArgs$times_expert[1])|is.null(exArgs$pool_type)){
+      surv_expert_max <- surv.obj$surv[which.min(abs(surv.obj$surv-0.8))]
+      surv_expert_time <- surv.obj$time[which.min(abs(surv.obj$surv-0.8))]
+    }else{
+      surv_expert_max <- plot_opinion1$data %>% filter(expert == exArgs$pool_type) %>% arrange(desc(fx))%>% pull(x) %>%head(n = 1)
+      surv_expert_time <- exArgs$times_expert[1]
+      
+    }
+    
+
+    
     if(d3 %in% c( "gom")){
       parameters.to.save_jags = c("alpha","beta", "rate")
       
-      #Inits as per flexsurvreg (reparameterized)
-      modelinits <- function(){
-        beta = c(log(1/mean(data.jags$t)*runif(1,0.8,1.5)),rep(0,data.jags$H -1))
-        list(alpha1 = runif(1,0.001,0.003),alpha2 = runif(1,0.001,0.003), beta = beta) 
+      #if(!is.function(init)){ # If initial function is already defined.
+      if(is.null(init)){  
+      param_optim <- optim(par = c(0,0),fn = param_eval, lower = rep(-interval.bound,2), upper= rep(interval.bound,2), 
+                             time = c(surv_time, surv_expert_time),
+                             Surv_t = c(surv_point, surv_expert_max),
+                             dist = "gom", 
+                             control = list(abstol = 0.001),
+                             method  = "Nelder-Mead")
+        
+        
+        init <- function(){
+          beta = c(param_optim$par[2],rep(0,data.jags$H -1))
+          #beta_exp = -log((beta - data.jags$beta_lower)/(data.jags$beta_upper-data.jags$beta_lower))
+          
+          list(beta_exp = exp(beta)) 
+        }
+        
       }
+
        
     }else if(d3 == "gga"){ #(d3 == "gga")
       parameters.to.save_jags = c("Q","sigma", "beta", "r", "b","mu")
@@ -1525,25 +1585,65 @@ runHMC <- function (x, exArgs){
       data.jags$is.censored <- ifelse(data.jags$d==0, 1, 0)
       data.jags$t_jags <- ifelse(data.jags$is.censored ==1, NA, data.jags$t) 
       data.jags$t_cen <- data.jags$t+data.jags$d
-      modelinits <- function(){list(t_jags = tinits1)}
+      
+      if(is.null(init)){
+        param_optim <- optim(par = c(0,0,0),fn = param_eval, lower = rep(-interval.bound,3), upper= rep(interval.bound,3), 
+                             time = c(surv_time, surv_expert_time),
+                             Surv_t = c(surv_point, surv_expert_max),
+                             dist = "gga", 
+                             control = list(abstol = 0.001))
+        
+        beta_jags = c(-param_optim$par[2],rep(0,data.jags$H -1))
+        #beta_exp = -log((beta_jags - data.jags$beta_lower)/(data.jags$beta_upper-data.jags$beta_lower))
+        
+        
+        init <- function(){list(t_jags = tinits1,
+                                beta_exp = exp(beta_jags),
+                                r = exp(param_optim$par[1]),
+                                b = exp(param_optim$par[3]))}
+      }
       #Stop JAGS Warning messages
       data.jags <- data.jags[names(data.jags) %!in% c("t", "d", "a0")]
       
       
     }else{ #"gam",
       parameters.to.save_jags = c("alpha","beta", "rate")
-      modelinits <- NULL
+      
+      if(is.null(init)){
+        param_optim <- optim(par = c(0,0),fn = param_eval, lower = rep(-interval.bound,2), upper= rep(interval.bound,2), 
+                             time = c(surv_time, surv_expert_time),
+                             Surv_t = c(surv_point, surv_expert_max),
+                             dist = "gam", 
+                             control = list(abstol = 0.001),
+                             method  = "Nelder-Mead")
+        
+        
+        init <- function(){
+          beta = c(param_optim$par[2],rep(0,data.jags$H -1))
+          #beta_exp = -log((beta - data.jags$beta_lower)/(data.jags$beta_upper-data.jags$beta_lower))
+          
+          list(alpha = exp(param_optim$par[1]), beta_exp = exp(beta)) 
+        }
+        
+      }
+      
     }
     data.jags <- data.jags[names(data.jags) %!in% "max_param"]
     cat(paste0(" \n SAMPLING FOR MODEL '",d,"_expert' NOW.  \n"))
+    
+    if(data.jags$expert_plus_data==0){
+      d <- paste0(d, "_prior")
+    }
+    
     model <-R2jags::jags(model.file = textConnection(get(paste0(d,".jags"))),
                              data=data.jags,
                              n.chains=chains,
-                             inits=modelinits,
+                             inits= init,
                              parameters.to.save = c(parameters.to.save_jags,"St_expert"),
                              n.iter = iter*5,
                              n.thin = thin,
                              n.burnin = iter,
+                             DIC = DIC_eval,
                              jags.module = c("glm","dic"))
 
     
@@ -1560,8 +1660,19 @@ runHMC <- function (x, exArgs){
   
   toc <- proc.time() - tic
   time_survHE <- toc[3]
-  ics <- compute_ICs_stan(model, d3, data.stan)
   
+  if(data.stan$expert_plus_data==0){
+    
+    ics <- data.frame(aic = NA, bic = NA, dic = NA, 
+                      dic2 = NA,waic = NA, pml = NA)
+    
+  }else{
+    ics <- compute_ICs_stan(model, d3, data.stan)
+    
+  }
+  
+  
+
   if (save.stan) {
     if(d3 %in% c("gam", "gga", "gom")){
       
@@ -1588,22 +1699,333 @@ runHMC <- function (x, exArgs){
 
 
 
+# make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
+#   
+#   
+#   
+#   availables <- survHE:::load_availables()
+#   method <- "hmc"
+#   formula_temp <- update(formula, paste(all.vars(formula, data)[1], 
+#                                         "~", all.vars(formula, data)[2], "+."))
+#   mf <- as_tibble(model.frame(formula_temp, data)) %>% 
+#           dplyr::rename(time = 1,event = 2) %>% rename_if(is.factor, .funs = ~gsub("as.factor[( )]","", .x)) %>% 
+#           dplyr::rename_if(is.factor, .funs = ~gsub("[( )]","", .x)) %>% 
+#           bind_cols(as_tibble(model.matrix(formula_temp,data)) %>% dplyr::select(contains("Intercept"))) %>%
+#           dplyr::select(time,event, contains("Intercept"), everything()) %>% tibble::rownames_to_column("ID")
+#   
+#   ####Code Change Here
+#   
+#   ######
+#   #print(data.stan$a0_obs)
+# 
+#   if (distr3 %!in% c("rps")) {
+#     data.stan <- list(t = (mf$time), d = mf$event, n = nrow(mf), 
+#                       X = matrix(model.matrix(formula, data), nrow = nrow(mf)), 
+#                       H = ncol(model.matrix(formula, data)))
+#     if (data.stan$H == 1) {
+#       data.stan$X <- cbind(data.stan$X, rep(0, data.stan$n))
+#       data.stan$H <- ncol(data.stan$X)
+#     }
+#   }
+#   if (distr3 == "rps") {
+#     if (exists("k", where = exArgs)) {
+#       
+#       k <- exArgs$k
+#     }
+#     else {
+#       k <- 0
+#     }
+#     knots <- quantile(log((mf %>% filter(event == 1))$time), 
+#                       seq(0, 1, length = k + 2))
+#     B <- flexsurv::basis(knots, log(mf$time))
+#     B_expert <- flexsurv::basis(knots, log(exArgs$times_expert))
+#     DB <- flexsurv::dbasis(knots, log(mf$time))
+#     mm <- model.matrix(formula, data)[, -1]
+#     if (length(mm) < 1) {
+#       mm <- matrix(rep(0, nrow(mf)), nrow = nrow(mf), ncol = 2)
+#     }
+#     if (is.null(dim(mm))) {
+#       mm <- cbind(mm, rep(0, length(mm)))
+#     }
+#     data.stan <- list(t = mf$time, d = mf$event, n = nrow(mf), 
+#                       M = k, X = mm, H = ncol(mm), B = B, DB = DB, gamma_lower = rep(-10,k + 2),
+#                       gamma_upper = rep(100, k + 2), knots = knots, B_expert = B_expert)
+#   }
+#   data.stan$mu_beta = rep(0, data.stan$H)
+#   #if (distr3 %in% c("gga", "lno", "gam")) {
+#  # if (distr3 %in% c("lno")) {
+#     
+#       data.stan$beta_lower <- rep(-10, data.stan$H)
+#       data.stan$beta_upper <- rep(100, data.stan$H)
+#       
+#       data.stan$mu_lower <- 0
+#       data.stan$Q_lower <- 0
+#       data.stan$a_lower  <- 0
+#       data.stan$alpha_lower <- 0
+#       data.stan$mu_upper <- 100
+#       data.stan$Q_upper <- 100
+#       data.stan$a_upper  <- 100
+#       data.stan$alpha_upper = 100
+#       
+# #}
+#   #else {
+#     
+#   #}
+#   # if (distr3 == "gef") {
+#   #   data.stan$a_sigma = data.stan$b_sigma = 0.1
+#   #   data.stan$mu_P = 0
+#   #   data.stan$sigma_P = 0.5
+#   #   data.stan$mu_Q = 0
+#   #   data.stan$sigma_Q = 2.5
+#   # }
+#   # else if (distr3 == "gga") {
+#   #   data.stan$a_sigma = data.stan$b_sigma = 0.1
+#   #   data.stan$mu_Q = 0
+#   #   data.stan$sigma_Q = 100
+#   # }
+#   # if (distr3 %in% c("gam","gom", "gga", "llo", "wei", 
+#   #                        "wph")) {
+#   #   data.stan$a_alpha = data.stan$b_alpha = 0.1
+#   # }else if(distr3 %in% c("lno")){
+# 
+#   # }
+#   d <- names(availables[[method]][match(distr3, availables[[method]])])
+#   priors <- list()
+#   if (exists("priors", where = exArgs)) {
+#     abbrs = survHE:::manipulate_distributions(names(exArgs$priors))$distr3
+#     pos = grep(distr3, abbrs)
+#     if (length(pos) > 0) {
+#       priors = exArgs$priors[[pos]]
+#     }
+#   }
+#   if (!is.null(priors$beta_lower)) {
+#     data.stan$beta_lower = priors$beta_lower
+#   }
+#   if (!is.null(priors$beta_upper)) {
+#     data.stan$beta_upper <- priors$beta_upper
+#   }
+#   if (!is.null(priors$gamma_lower) & distr3 == "rps") {
+#     data.stan$gamma_lower <- priors$gamma_lower
+#   }
+#   if (!is.null(priors$gamma_upper) & distr3 == "rps") {
+#     data.stan$gamma_upper <- priors$gamma_upper
+#   }
+#   if (!is.null(priors$a_lower)) {
+#     data.stan$a_lower = priors$a_lower
+#   }
+#   if (!is.null(priors$a_upper)) {
+#     data.stan$a_upper = priors$a_upper
+#   }
+#   if (!is.null(priors$P_lower)) {
+#     data.stan$P_lower = priors$P_lower
+#   }
+#   if (!is.null(priors$P_upper)) {
+#     data.stan$P_upper = priors$P_upper
+#   }
+#   if (!is.null(priors$Q_lower)) {
+#     data.stan$Q_lower = priors$Q_lower
+#   }
+#   if (!is.null(priors$Q_upper)) {
+#     data.stan$Q_upper = priors$Q_upper
+#   }
+#   if (!is.null(priors$alpha_lower)) {
+#     data.stan$alpha_lower = priors$alpha_lower
+#   }
+#   if (!is.null(priors$alpha_upper)) {
+#     data.stan$alpha_upper = priors$alpha_upper
+#   }
+#   
+#   
+#   if(exArgs$opinion_type == "survival"){
+#     data.stan$St_indic <- 1
+#     #even if survival need to define these (just put as 1)
+#     data.stan$id_comp <- 1
+#     data.stan$id_trt <- 1
+#   }else{
+#     data.stan$St_indic <- 0
+#     #even if survival need to define these (just put as 1)
+#     data.stan$id_St <- 1
+#    }
+# 
+#   if(ncol(mf) == 4){
+#     #No covariates
+#     # Has to be opinion_type survival 
+#     data.stan$id_St <- 1
+#     
+#   }else if(ncol(mf) == 5){
+#     
+#     if(exArgs$opinion_type == "survival"){
+#       data.stan$id_St <- min(which(mf[,5] == exArgs$id_St))
+#     }else{# Survival Difference
+#       data.stan$id_trt <- min(which(mf[,5] == exArgs$id_trt)) 
+#       if(length(unique(mf[,5] %>% pull()))==2){
+#         data.stan$id_comp <- min(which(mf[,5] != exArgs$id_trt)) 
+#       }else{
+#         data.stan$id_comp <- min(which(mf[,5] == exArgs$id_comp))  
+#       }
+#       
+#     }
+#     #put the number in  could put in a combination of numbers
+#   }else{
+#     print("We do not allow more than one covariate (i.e. treatment) in the analysis")
+#     stop()
+#   }
+#   
+#   
+#   
+#   # 
+#   # 
+#   # if(exArgs$opinion_type == "survival"){
+#   #   if(length(unique(data.stan[["X"]][,2])) == 1){
+#   #     data.stan$id_St <-1
+#   #   }else{
+#   #     #Need to work on this function
+#   #     data.stan$id_St <-  min(which(data.stan[["X"]][,2] == exArgs$id_St))
+#   #   }
+#   # 
+#   #     
+#   #   data.stan$id_comp <-  1
+#   #   data.stan$id_trt <-  1
+#   #   # if (distr3 %in% c("gam", "gga", "gom")){
+#   #   #   data.stan$id_comp <-  1  # Has to be defined for JAGS
+#   #   #   data.stan$id_trt <-  1
+#   #   #   
+#   #   # }
+#   #   
+#   # }else{
+#   #   
+#   #     data.stan$id_trt <-  min(which(data.stan[["X"]][,2] == 1))
+#   #     data.stan$id_comp <-  min(which(data.stan[["X"]][,2] == 0)) 
+#   #     data.stan$id_St <-  numeric(0)
+#   #     if (distr3 %in% c("gam", "gga", "gom")){
+#   #       data.stan$id_St <-  1  # Has to be defined for JAGS
+#   #       
+#   #     }
+#   # 
+#   # }
+#     
+#    
+#     param_expert <- exArgs$param_expert
+#     n.experts <- c()
+#     
+#     for(i in 1:length(param_expert)){
+#       n.experts <- c(n.experts, nrow(param_expert[[i]])) 
+#     }
+#     
+#     data_dist_ind <- num_param <- matrix(-999.2,nrow = max(n.experts), ncol =  length(param_expert))
+#     expert.array <- array(-999.2,dim = c(max(n.experts),5,length(param_expert))) 
+#     
+#     for(i in 1:length(param_expert)){
+#       lk_up_dist <- c("norm", "t", "gamma", "lnorm","beta")
+#       dist_fit <- param_expert[[i]][,1]
+#       if(length(dist_fit) - length(expert.array[,1,i])){
+#         dist_fit <- c(dist_fit, rep(-999.2,length(dist_fit) - length(expert.array[,1,i])))
+#       }
+#       expert.array[,1,i] <- as.numeric(sapply(dist_fit, function(x){which(x==lk_up_dist)}))
+#       weight_vec <- param_expert[[i]][,2]
+#       expert.array[1:length(weight_vec),2,i] <- weight_vec
+#       expert.array[1:nrow(param_expert[[i]][,3:5]),3:5,i] <- as.matrix(param_expert[[i]][,3:5])
+#     }
+#     
+#     
+#     #Stan does not allow NA
+#     expert.array[is.na(expert.array)] <- -999.2
+# 
+#     if(!is.null(exArgs$times_expert)){
+#       data.stan$n_time_expert <- length(exArgs$times_expert)
+#       data.stan$time_expert <- as.array(exArgs$times_expert)
+#     }else{
+#       data.stan$n_time_expert <- 1
+#       data.stan$time_expert <- numeric(0) #This produces an array of size 0
+#       #https://dev.to/martinmodrak/optional-parametersdata-in-stan-4o33
+#       
+#       if (distr3 %in% c("gam", "gga", "gom")){
+#         data.stan$time_expert <- 1 # Has to be defined for JAGS
+#         
+#       }
+#       
+#       
+#     }
+#  
+#     data.stan$param_expert <-expert.array
+#     data.stan$n_experts <- as.array(n.experts)  
+#     
+#     if(is.null(exArgs$pool_type)){
+#      
+#       data.stan$pool_type <- 1
+#       
+#       }else{
+#         data.stan$pool_type <- as.numeric(grepl("line", exArgs$pool_type)) 
+#         
+#       }
+#     
+#     if(data.stan$pool_type == 0){
+#       k_norm <- rep(NA,data.stan$n_time_expert )
+#       for(i in 1:data.stan$n_time_expert){
+#         
+#         param_expert[[i]]$dist <- stringr::str_replace_all(param_expert[[i]]$dist, "normal", "norm") 
+#         param_expert[[i]]$dist <- stringr::str_replace_all(param_expert[[i]]$dist, "lognorm", "lnorm") 
+#         quant.vec <- t(apply(param_expert[[i]], 1, function(x){get_quant_val(
+#           dist = x["dist"],
+#           param1 = x["param1"],
+#           param2 = x["param2"],
+#           param3 = x["param3"],
+#           probs = c(0.001,0.025,0.5,0.975,0.999))}))
+#         
+#         central.cauchy <- mean(quant.vec[,3])#mean
+#         sd.cauchy <- max(apply(quant.vec,1, function(x){(x[4]-x[2])/4})) #sd
+#         
+#         min_quant <- min(quant.vec)
+#         max_quant <- max(quant.vec)
+#         
+#         x.eval <- seq(min_quant, max_quant, length.out = 100)
+#           dens.eval <- eval_dens_pool(x.eval,param_expert[[i]],pool_type = "log pool")
+#           k_norm[i] <- sfsmisc::integrate.xy(x = x.eval,fx = dens.eval)
+#           #dens.eval <- dens.eval/k_norm
+#        
+#       }
+#       data.stan$k_norm <- k_norm
+# 
+#     }
+#     
+#   
+# 
+#     #Power prior
+#    
+#     if(!is.null(exArgs$a0)){
+#       data.stan$a0 <- exArgs$a0
+#     }else{
+#       data.stan$a0 <- rep(1, nrow(data))
+#     }
+#  
+#   
+#   #data.stan$exArgs <- exArgs
+#   #save(data.stan, file = paste0(pathway, "Extra Output/datastan.RData"))
+#   #
+#   data.stan	
+# }
+
+# model <- fit.weibull
+# distr3 <- "weib"
+# data.stan <- stan.data
+
 make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
+  
   availables <- survHE:::load_availables()
   method <- "hmc"
   formula_temp <- update(formula, paste(all.vars(formula, data)[1], 
                                         "~", all.vars(formula, data)[2], "+."))
   mf <- as_tibble(model.frame(formula_temp, data)) %>% 
-          dplyr::rename(time = 1,event = 2) %>% rename_if(is.factor, .funs = ~gsub("as.factor[( )]","", .x)) %>% 
-          dplyr::rename_if(is.factor, .funs = ~gsub("[( )]","", .x)) %>% 
-          bind_cols(as_tibble(model.matrix(formula_temp,data)) %>% dplyr::select(contains("Intercept"))) %>%
-          dplyr::select(time,event, contains("Intercept"), everything()) %>% tibble::rownames_to_column("ID")
+    dplyr::rename(time = 1,event = 2) %>% rename_if(is.factor, .funs = ~gsub("as.factor[( )]","", .x)) %>% 
+    dplyr::rename_if(is.factor, .funs = ~gsub("[( )]","", .x)) %>% 
+    bind_cols(as_tibble(model.matrix(formula_temp,data)) %>% dplyr::select(contains("Intercept"))) %>%
+    dplyr::select(time,event, contains("Intercept"), everything()) %>% tibble::rownames_to_column("ID")
   
   ####Code Change Here
   
   ######
   #print(data.stan$a0_obs)
-
+  
   if (distr3 %!in% c("rps")) {
     data.stan <- list(t = (mf$time), d = mf$event, n = nrow(mf), 
                       X = matrix(model.matrix(formula, data), nrow = nrow(mf)), 
@@ -1634,17 +2056,30 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
       mm <- cbind(mm, rep(0, length(mm)))
     }
     data.stan <- list(t = mf$time, d = mf$event, n = nrow(mf), 
-                      M = k, X = mm, H = ncol(mm), B = B, DB = DB, mu_gamma = rep(0,k + 2),
-                      sigma_gamma = rep(5, k + 2), knots = knots, B_expert = B_expert)
+                      M = k, X = mm, H = ncol(mm), B = B, DB = DB, gamma_lower = rep(-10,k + 2),
+                      gamma_upper = rep(100, k + 2), knots = knots, B_expert = B_expert)
   }
   data.stan$mu_beta = rep(0, data.stan$H)
   #if (distr3 %in% c("gga", "lno", "gam")) {
-  if (distr3 %in% c("lno")) {
-    
-      data.stan$sigma_beta <- rep(100, data.stan$H)
-  }
+  # if (distr3 %in% c("lno")) {
+  
+  data.stan$beta_lower <- rep(-10, data.stan$H)
+  data.stan$beta_upper <- rep(100, data.stan$H)
+  
+  data.stan$mu_lower <- 0
+  data.stan$Q_lower <- 0
+  data.stan$a_lower  <- 0
+  data.stan$alpha_lower <- 0
+  data.stan$mu_upper <- 100
+  data.stan$Q_upper <- 100
+  data.stan$a_upper  <- 100
+  data.stan$alpha_upper = 100
+  
+
+  
+  #}
   #else {
-    data.stan$sigma_beta <- rep(5, data.stan$H)
+  
   #}
   # if (distr3 == "gef") {
   #   data.stan$a_sigma = data.stan$b_sigma = 0.1
@@ -1658,13 +2093,12 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
   #   data.stan$mu_Q = 0
   #   data.stan$sigma_Q = 100
   # }
-  if (distr3 %in% c("gam","gom", "gga", "llo", "wei", 
-                         "wph")) {
-    data.stan$a_alpha = data.stan$b_alpha = 0.1
-  }else if(distr3 %in% c("lno")){
-    data.stan$a_alpha = 0
-    data.stan$b_alpha = 5
-  }
+  # if (distr3 %in% c("gam","gom", "gga", "llo", "wei", 
+  #                        "wph")) {
+  #   data.stan$a_alpha = data.stan$b_alpha = 0.1
+  # }else if(distr3 %in% c("lno")){
+  
+  # }
   d <- names(availables[[method]][match(distr3, availables[[method]])])
   priors <- list()
   if (exists("priors", where = exArgs)) {
@@ -1674,41 +2108,41 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
       priors = exArgs$priors[[pos]]
     }
   }
-  if (!is.null(priors$mu_beta)) {
-    data.stan$mu_beta = priors$mu_beta
+  if (!is.null(priors$beta_lower)) {
+    data.stan$beta_lower = priors$beta_lower
   }
-  if (!is.null(priors$sigma_beta)) {
-    data.stan$sigma_beta <- priors$sigma_beta
+  if (!is.null(priors$beta_upper)) {
+    data.stan$beta_upper <- priors$beta_upper
   }
-  if (!is.null(priors$mu_gamma) & distr3 == "rps") {
-    data.stan$mu_gamma <- priors$mu_gamma
+  if (!is.null(priors$gamma_lower) & distr3 == "rps") {
+    data.stan$gamma_lower <- priors$gamma_lower
   }
-  if (!is.null(priors$sigma_gamma) & distr3 == "rps") {
-    data.stan$sigma_gamma <- priors$sigma_gamma
+  if (!is.null(priors$gamma_upper) & distr3 == "rps") {
+    data.stan$gamma_upper <- priors$gamma_upper
   }
-  if (!is.null(priors$a_sigma)) {
-    data.stan$a_sigma = priors$a_sigma
+  if (!is.null(priors$a_lower)) {
+    data.stan$a_lower = priors$a_lower
   }
-  if (!is.null(priors$b_sigma)) {
-    data.stan$b_sigma = priors$b_sigma
+  if (!is.null(priors$a_upper)) {
+    data.stan$a_upper = priors$a_upper
   }
-  if (!is.null(priors$mu_P)) {
-    data.stan$mu_P = priors$mu_P
+  if (!is.null(priors$P_lower)) {
+    data.stan$P_lower = priors$P_lower
   }
-  if (!is.null(priors$sigma_P)) {
-    data.stan$sigma_P = priors$sigma_P
+  if (!is.null(priors$P_upper)) {
+    data.stan$P_upper = priors$P_upper
   }
-  if (!is.null(priors$mu_Q)) {
-    data.stan$mu_Q = priors$mu_Q
+  if (!is.null(priors$Q_lower)) {
+    data.stan$Q_lower = priors$Q_lower
   }
-  if (!is.null(priors$sigma_Q)) {
-    data.stan$sigma_Q = priors$sigma_Q
+  if (!is.null(priors$Q_upper)) {
+    data.stan$Q_upper = priors$Q_upper
   }
-  if (!is.null(priors$a_alpha)) {
-    data.stan$a_alpha = priors$a_alpha
+  if (!is.null(priors$alpha_lower)) {
+    data.stan$alpha_lower = priors$alpha_lower
   }
-  if (!is.null(priors$b_alpha)) {
-    data.stan$b_alpha = priors$b_alpha
+  if (!is.null(priors$alpha_upper)) {
+    data.stan$alpha_upper = priors$alpha_upper
   }
   
   
@@ -1721,8 +2155,25 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
     data.stan$St_indic <- 0
     #even if survival need to define these (just put as 1)
     data.stan$id_St <- 1
-   }
-
+  }
+  
+  
+  if(data.stan$St_indic == 1){
+    data.stan$alpha_lower_gomp <- -10
+  }else{
+    data.stan$alpha_lower_gomp <- 0
+  }
+  
+  data.stan$alpha_upper_gomp <- 100
+  
+  if (!is.null(priors$alpha_upper_gomp)) {
+    data.stan$alpha_upper_gomp = priors$alpha_upper_gomp
+  }
+  if (!is.null(priors$alpha_lower_gomp)) {
+    data.stan$alpha_lower_gomp = priors$alpha_lower_gomp
+  }
+  
+  
   if(ncol(mf) == 4){
     #No covariates
     # Has to be opinion_type survival 
@@ -1779,101 +2230,129 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
   #     }
   # 
   # }
-    
-   
-    param_expert <- exArgs$param_expert
-    n.experts <- c()
-    
-    for(i in 1:length(param_expert)){
-      n.experts <- c(n.experts, nrow(param_expert[[i]])) 
-    }
-    
-    data_dist_ind <- num_param <- matrix(-999.2,nrow = max(n.experts), ncol =  length(param_expert))
-    expert.array <- array(-999.2,dim = c(max(n.experts),5,length(param_expert))) 
-    
-    for(i in 1:length(param_expert)){
-      lk_up_dist <- c("norm", "t", "gamma", "lnorm","beta")
-      dist_fit <- param_expert[[i]][,1]
-      if(length(dist_fit) - length(expert.array[,1,i])){
-        dist_fit <- c(dist_fit, rep(-999.2,length(dist_fit) - length(expert.array[,1,i])))
-      }
-      expert.array[,1,i] <- as.numeric(sapply(dist_fit, function(x){which(x==lk_up_dist)}))
-      weight_vec <- param_expert[[i]][,2]
-      expert.array[1:length(weight_vec),2,i] <- weight_vec
-      expert.array[1:nrow(param_expert[[i]][,3:5]),3:5,i] <- as.matrix(param_expert[[i]][,3:5])
-    }
-    
-    
-    #Stan does not allow NA
-    expert.array[is.na(expert.array)] <- -999.2
-
-    if(!is.null(exArgs$times_expert)){
-      data.stan$n_time_expert <- length(exArgs$times_expert)
-      data.stan$time_expert <- as.array(exArgs$times_expert)
-    }else{
-      data.stan$n_time_expert <- 1
-      data.stan$time_expert <- numeric(0) #This produces an array of size 0
-      #https://dev.to/martinmodrak/optional-parametersdata-in-stan-4o33
-      
-      if (distr3 %in% c("gam", "gga", "gom")){
-        data.stan$time_expert <- 1 # Has to be defined for JAGS
-        
-      }
-      
-      
-    }
- 
-    data.stan$param_expert <-expert.array
-    data.stan$n_experts <- as.array(n.experts)  
-    
-    if(is.null(exArgs$pool_type)){
-     
-      data.stan$pool_type <- 1
-      
-      }else{
-        data.stan$pool_type <- as.numeric(grepl("line", exArgs$pool_type)) 
-        
-      }
-    
-    if(data.stan$pool_type == 0){
-      k_norm <- rep(NA,data.stan$n_time_expert )
-      for(i in 1:data.stan$n_time_expert){
-        
-        param_expert[[i]]$dist <- stringr::str_replace_all(param_expert[[i]]$dist, "normal", "norm") 
-        param_expert[[i]]$dist <- stringr::str_replace_all(param_expert[[i]]$dist, "lognorm", "lnorm") 
-        quant.vec <- t(apply(param_expert[[i]], 1, function(x){get_quant_val(
-          dist = x["dist"],
-          param1 = x["param1"],
-          param2 = x["param2"],
-          param3 = x["param3"],
-          probs = c(0.001,0.025,0.5,0.975,0.999))}))
-        
-        central.cauchy <- mean(quant.vec[,3])#mean
-        sd.cauchy <- max(apply(quant.vec,1, function(x){(x[4]-x[2])/4})) #sd
-        
-        min_quant <- min(quant.vec)
-        max_quant <- max(quant.vec)
-        
-        x.eval <- seq(min_quant, max_quant, length.out = 100)
-          dens.eval <- eval_dens_pool(x.eval,param_expert[[i]],pool_type = "log pool")
-          k_norm[i] <- sfsmisc::integrate.xy(x = x.eval,fx = dens.eval)
-          #dens.eval <- dens.eval/k_norm
-       
-      }
-      data.stan$k_norm <- k_norm
-
-    }
-    
   
-
-    #Power prior
-   
-    if(!is.null(exArgs$a0)){
-      data.stan$a0 <- exArgs$a0
-    }else{
-      data.stan$a0 <- rep(1, nrow(data))
+  
+  param_expert <- exArgs$param_expert
+  
+  
+  
+  
+  n.experts <- c()
+  
+  St_upper_vec <- St_lower_vec <- rep(NA, length(param_expert))
+  
+  for(i in 1:length(param_expert)){
+    n.experts <- c(n.experts, nrow(param_expert[[i]])) 
+    plot_opinion<- plot_expert_opinion(param_expert[[i]], 
+                                       weights = param_expert[[i]]$wi)
+    cred_int_val <- cred_int(plot_opinion,val = "linear pool", interval = c(0.005, 0.995))
+    St_lower_vec[i] <- cred_int_val[1]
+    St_upper_vec[i] <- cred_int_val[2]
+  }
+  St_upper <- max(St_upper_vec)
+  St_lower <- min(St_lower_vec)
+  
+  if(!is.null(exArgs$St_upper)){
+    St_upper <- exArgs$St_upper
+  }
+  
+  if(!is.null(exArgs$St_lower)){
+    St_lower <- exArgs$St_lower
+  }
+  
+  
+  if(St_lower < 0.05 & exArgs$opinion_type == "survival"){
+    warning("Lower bound of survival is less than 0.05, possibility that the distribution for the expert's opinion on survival is distorted. \n Suggest to use MLE, see Github for details") 
+  }
+  data.stan$St_upper <- St_upper
+  data.stan$St_lower <- St_lower
+  
+  data_dist_ind <- num_param <- matrix(-999.2,nrow = max(n.experts), ncol =  length(param_expert))
+  expert.array <- array(-999.2,dim = c(max(n.experts),5,length(param_expert))) 
+  
+  for(i in 1:length(param_expert)){
+    lk_up_dist <- c("norm", "t", "gamma", "lnorm","beta")
+    dist_fit <- param_expert[[i]][,1]
+    if(length(dist_fit) - length(expert.array[,1,i])){
+      dist_fit <- c(dist_fit, rep(-999.2,length(dist_fit) - length(expert.array[,1,i])))
     }
- 
+    expert.array[,1,i] <- as.numeric(sapply(dist_fit, function(x){which(x==lk_up_dist)}))
+    weight_vec <- param_expert[[i]][,2]
+    expert.array[1:length(weight_vec),2,i] <- weight_vec
+    expert.array[1:nrow(param_expert[[i]][,3:5]),3:5,i] <- as.matrix(param_expert[[i]][,3:5])
+  }
+  
+  
+  #Stan does not allow NA
+  expert.array[is.na(expert.array)] <- -999.2
+  
+  if(!is.null(exArgs$times_expert)){
+    data.stan$n_time_expert <- length(exArgs$times_expert)
+    data.stan$time_expert <- as.array(exArgs$times_expert)
+  }else{
+    data.stan$n_time_expert <- 1
+    data.stan$time_expert <- numeric(0) #This produces an array of size 0
+    #https://dev.to/martinmodrak/optional-parametersdata-in-stan-4o33
+    
+    if (distr3 %in% c("gam", "gga", "gom")){
+      data.stan$time_expert <- 1 # Has to be defined for JAGS
+      
+    }
+    
+    
+  }
+  
+  data.stan$param_expert <-expert.array
+  data.stan$n_experts <- as.array(n.experts)  
+  
+  if(is.null(exArgs$pool_type)){
+    
+    data.stan$pool_type <- 1
+    
+  }else{
+    data.stan$pool_type <- as.numeric(grepl("line", exArgs$pool_type)) 
+    
+  }
+  
+  if(data.stan$pool_type == 0){
+    k_norm <- rep(NA,data.stan$n_time_expert )
+    for(i in 1:data.stan$n_time_expert){
+      
+      param_expert[[i]]$dist <- stringr::str_replace_all(param_expert[[i]]$dist, "normal", "norm") 
+      param_expert[[i]]$dist <- stringr::str_replace_all(param_expert[[i]]$dist, "lognorm", "lnorm") 
+      quant.vec <- t(apply(param_expert[[i]], 1, function(x){get_quant_val(
+        dist = x["dist"],
+        param1 = x["param1"],
+        param2 = x["param2"],
+        param3 = x["param3"],
+        probs = c(0.001,0.025,0.5,0.975,0.999))}))
+      
+      central.cauchy <- mean(quant.vec[,3])#mean
+      sd.cauchy <- max(apply(quant.vec,1, function(x){(x[4]-x[2])/4})) #sd
+      
+      min_quant <- min(quant.vec)
+      max_quant <- max(quant.vec)
+      
+      x.eval <- seq(min_quant, max_quant, length.out = 100)
+      dens.eval <- eval_dens_pool(x.eval,param_expert[[i]],pool_type = "log pool")
+      k_norm[i] <- sfsmisc::integrate.xy(x = x.eval,fx = dens.eval)
+      #dens.eval <- dens.eval/k_norm
+      
+    }
+    data.stan$k_norm <- k_norm
+    
+  }
+  
+  
+  
+  #Power prior
+  
+  if(!is.null(exArgs$a0)){
+    data.stan$a0 <- exArgs$a0
+  }else{
+    data.stan$a0 <- rep(1, nrow(data))
+  }
+  
   
   #data.stan$exArgs <- exArgs
   #save(data.stan, file = paste0(pathway, "Extra Output/datastan.RData"))
@@ -1881,9 +2360,6 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
   data.stan	
 }
 
-# model <- fit.weibull
-# distr3 <- "weib"
-# data.stan <- stan.data
 
 compute_ICs_stan <-function (model, distr3, data.stan){
   if (distr3 %!in% c("gam", "gga", "gom")) {
@@ -1921,10 +2397,18 @@ compute_ICs_stan <-function (model, distr3, data.stan){
   D.theta <- -2 * loglik
   D.bar <- -2 * loglik.bar
   pD <- mean(D.theta) - D.bar
-  if (pD < 0) {
+  
+  if (is.nan(pD)) {
+    warning(paste0("pD has not been evaluated; Do not use  DIC for model comparison"))
+    pD <- 2
+  }
+  if (pD < 0 ) {
     warning(paste0("pD is ", round(pD), " for ", distr3, 
                    "; DIC estimates unreliable, use WAIC or PML."))
   }
+  
+
+  
   pV <- 0.5 * var(D.theta)
   dic <- mean(D.theta) + pD
   dic2 <- mean(D.theta) + pV
@@ -2564,6 +3048,51 @@ print.survHE <-function (x, mod = 1, ...)
 }
 
 
+param_eval <- function(param, time,Surv_t, dist){
+  
+  
+  if(dist == "gga"){
+    param <- exp(param) #all need to be positive
+    # Jags r -> k 
+    # lambda -> 1/a -> 1/lambda -> scale
+    # b -> b -> shape
+    return(sum(abs(pgengamma.orig(time,shape = param[3],
+                                  scale = param[2],k =  param[1], lower.tail = FALSE, log = F) - Surv_t)))
+    
+    #param[1] and param[3] will have to exponentated; scale will have to be multipled by -1 to get log(lambda) which is beta
+  }else if(dist == "gom"){
+    param[2] <- exp(param[2]) #rate must be positive; not shape
+    return(sum(abs(pgompertz(time, shape =param[1],
+                             rate =param[2], lower.tail = FALSE, log = F) - Surv_t)))
+    #param[1] will be indenity, param[2] will be beta
+    
+  }else if(dist == "gam"){
+    param <- exp(param) #all need to be positive
+    return(sum(abs(pgamma(time, shape = param[1],
+                          scale = param[2],lower.tail = FALSE, log = F) - Surv_t)))
+    
+    #param[1] will have to be exponetiated, param[2] will be beta
+    
+  }
+}
+
+
+output_diag <- function(object, dir = getwd(), plot =c("density", "running", "caterpillar")){
+  require("ggmcmc")
+  require("coda")
+  n_mods <- length(object$models)
+  for(i in 1:n_mods){
+    if(class(object$models[i][[1]]) == "rjags"){
+      ggmcmc(ggs(as.mcmc(object$models[[i]])), plot = plot, file = paste0(dir,"/",names(object$models[i]),".pdf"))
+    }else{
+      ggmcmc(ggs(object$models[[i]]), plot = plot, file = paste0(dir,"/",names(object$models[i]),".pdf"))
+    }
+    
+  }
+  
+}
+
+
 #### Adjusts SurvHE functions:
 
 #error in a rps function 
@@ -2776,4 +3305,28 @@ environment(get_stats_hmc) <- environment(tmpfun)
 attributes(get_stats_hmc) <- attributes(tmpfun)  
 assignInNamespace("get_stats_hmc", get_stats_hmc, ns="survHE")
 
+
+add_effects_hmc <- function (table, x) 
+{
+  if (length(grep("beta\\[", rownames(table))) > 1) {
+    effects <- matrix(table[grep("beta\\[", rownames(table)), 
+    ], ncol = 4)
+    rownames(effects) <- colnames(model.matrix(x$misc$formula, 
+                                               x$misc$data))
+    effects = effects[-grep("Intercept", rownames(effects)), 
+                      , drop = FALSE]
+  }
+  else {
+    effects <- matrix(NA, nrow = 0, ncol = 4)
+  }
+  return(effects)
 }
+tmpfun <- get("add_effects_hmc", envir = asNamespace("survHE"))
+environment(add_effects_hmc) <- environment(tmpfun)
+attributes(add_effects_hmc) <- attributes(tmpfun)  
+assignInNamespace("add_effects_hmc", add_effects_hmc, ns="survHE")
+
+
+}
+
+

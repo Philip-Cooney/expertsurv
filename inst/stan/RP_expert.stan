@@ -86,8 +86,11 @@ functions {
 
     }
     
-      
-    return(log(sum(dens)));
+      if(pool_type == 1){
+      return(log(sum(dens)));
+      }else{
+      return(log(prod(dens)));
+      }
     
   }
   
@@ -102,10 +105,10 @@ data {
   matrix[n,H] X;                    // matrix of covariates for the (time-independent) linear predictor
   matrix[n,M+2] B;                  // matrix with basis
   matrix[n,M+2] DB;                 // matrix with derivatives of the basis
-  vector[H] mu_beta;                // mean of the covariates coefficients
-  vector<lower=0> [H] sigma_beta;   // sd of the covariates coefficients
-  vector[M+2] mu_gamma;             // mean of the splines coefficients
-  vector<lower=0>[M+2] sigma_gamma; // sd of the splines coefficients
+  vector[H] beta_lower;	    //lower bound for the covariate coefficients
+  vector[H] beta_upper;   // upper bound for the covariate coefficients
+  vector[M+2] gamma_lower;             // lower bound of the splines coefficients
+  vector[M+2] gamma_upper; // upper bound of the splines coefficients
   
   int n_time_expert;
   int<lower = 0, upper = 1> St_indic; // 1 Expert opinion on survival @ timepoint ; 0 Expert opinion on survival difference
@@ -122,6 +125,11 @@ data {
   
   matrix[n_time_expert,M+2] B_expert;                  // matrix with basis for experts times
   vector[n] a0; //Power prior for the observations  
+  real St_lower;
+  real St_upper;
+  int<lower = 0, upper = 1> expert_plus_data;
+
+
 }
 
 
@@ -134,7 +142,7 @@ parameters {
 transformed parameters{
   vector[n] linpred;
   vector[n] mu;
-  vector[n_time_expert] St_expert;
+  vector<lower=St_lower,upper=St_upper>[n_time_expert] St_expert;
   
   linpred = X*beta;
   for (i in 1:n) {
@@ -149,11 +157,15 @@ transformed parameters{
 
 model {
   // Priors
-  gamma ~ normal(mu_gamma,sigma_gamma);
-  beta ~ normal(mu_beta,sigma_beta);
+  gamma ~ uniform(gamma_lower,gamma_upper);
+  beta ~ uniform(beta_lower,beta_upper);
   
   // Data model
-  t ~ rps(d,gamma,B,DB,X*beta, a0);
+  if(expert_plus_data){
+   t ~ rps(d,gamma,B,DB,X*beta, a0);
+  }
+ 
+  
   
   for (i in 1:n_time_expert){
      

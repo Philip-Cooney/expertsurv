@@ -100,8 +100,11 @@ functions {
 
     }
     
-      
-    return(log(sum(dens)));
+      if(pool_type == 1){
+      return(log(sum(dens)));
+      }else{
+      return(log(prod(dens)));
+      }
     
   }
 
@@ -115,13 +118,13 @@ data {
   vector[n] d;            // censoring indicator (1=observed, 0=censored)
   int H;                  // number of covariates
   matrix[n,H] X;          // matrix of covariates (with n rows and H columns)
-  vector[H] mu_beta;	    // mean of the covariates coefficients
-  vector<lower=0> [H] sigma_beta;   // sd of the covariates coefficients
-  real a_alpha;			      // lower bound for the sd of the data			  
-  real b_alpha;			      // upper bound for the sd of the data
-  
+  vector[H] beta_lower;	    //lower bound for the covariate coefficients
+  vector[H] beta_upper;   // upper bound for the covariate coefficients
+  real<lower=0> alpha_lower;
+  real<lower=0> alpha_upper;
+
   vector[n] a0; //Power prior for the observations
-  int<lower = 0, upper = 1> St_indic; // 1 Expert opinion on survival @ timepoint ; 0 Expert opinion on survival difference
+  int St_indic; // 1 Expert opinion on survival @ timepoint ; 0 Expert opinion on survival difference
   int n_time_expert;
 
   int id_St;
@@ -133,7 +136,10 @@ data {
 
   real param_expert[max(n_experts),5,n_time_expert];
   vector[St_indic ? n_time_expert : 0] time_expert;
-  
+  real St_lower;
+  real St_upper;
+  int<lower = 0, upper = 1> expert_plus_data;
+
 }
 
 parameters {
@@ -142,9 +148,16 @@ parameters {
 }
 
 transformed parameters {
+  //vector[H] beta;
   vector[n] linpred;
   vector[n] mu;
-  vector[n_time_expert] St_expert;
+  vector<lower=St_lower,upper=St_upper>[n_time_expert] St_expert;
+  
+  
+  // for(i in 1:H){
+  //  beta[i] = beta_lower[i] + (beta_upper[i]-beta_lower[i])*exp(-beta_exp[i]); // Transformation to make it linear on the outcome scale (i.e. exp)
+  //}
+
   
   linpred = X*beta;
   for (i in 1:n) {
@@ -164,9 +177,13 @@ transformed parameters {
 }
 
 model {
-  alpha ~ uniform(a_alpha,b_alpha);
-  beta ~ normal(mu_beta,sigma_beta);
-  t ~ surv_lognormal(d,X*beta,alpha, a0);
+  alpha ~ uniform(alpha_lower,alpha_upper);
+  beta ~ uniform(beta_lower, beta_upper);
+  
+  if(expert_plus_data){
+    t ~ surv_lognormal(d,X*beta,alpha, a0);
+  }
+ 
   
   for (i in 1:n_time_expert){
      

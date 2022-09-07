@@ -17,18 +17,18 @@ functions {
   
   // Defines the log survival indvidual
   real log_Sind (real t, real rate) {
-	real log_Sind;
-      log_Sind = -rate .* t;
+    real log_Sind;
+    log_Sind = -rate .* t;
     return log_Sind;
   }  
   
   // Defines difference in expected survival
   real Surv_diff ( real rate_trt, real rate_comp) {
-	real Surv_diff;
-      Surv_diff = 1/rate_trt - 1/rate_comp;
+    real Surv_diff;
+    Surv_diff = 1/rate_trt - 1/rate_comp;
     return Surv_diff;
   }
-    
+  
   // Defines the sampling distribution
   real surv_exponential_lpdf (vector t, vector d, vector rate, vector a0) {
     vector[num_elements(t)] log_lik;
@@ -38,8 +38,21 @@ functions {
     return prob;
   } 
   
-
-   real log_density_dist(real[ , ] params, 
+  
+  real scale_exp_log(real x,  real time){
+    real prob;
+    real lprob;
+    
+    prob = time*exp(-x*time);
+    lprob = log(prob);
+    return lprob;
+  } 
+  
+  
+  
+  
+  
+  real log_density_dist(real[ , ] params, 
                         real x,int num_expert, int pool_type){
     
     // Evaluates the log density for a range of distributions
@@ -47,52 +60,56 @@ functions {
     real dens[num_expert];
     
     for(i in 1:num_expert){
-    if(params[i,1] == 1){
-      if(pool_type == 1){
-        dens[i] = exp(normal_lpdf(x|params[i,3], params[i,4]))*params[i,2]; /// Only require the log density is correct to a constant of proportionality
-      }else{
-        dens[i] = exp(normal_lpdf(x|params[i,3], params[i,4]))^params[i,2]; /// Only require the log density is correct to a constant of proportionality
-      }
-      
-    }else if(params[i,1] == 2){
-       if(pool_type == 1){
+      if(params[i,1] == 1){
+        if(pool_type == 1){
+          dens[i] = exp(normal_lpdf(x|params[i,3], params[i,4]))*params[i,2]; /// Only require the log density is correct to a constant of proportionality
+        }else{
+          dens[i] = exp(normal_lpdf(x|params[i,3], params[i,4]))^params[i,2]; /// Only require the log density is correct to a constant of proportionality
+        }
+        
+      }else if(params[i,1] == 2){
+        if(pool_type == 1){
           dens[i] = exp(student_t_lpdf(x|params[i,5],params[i,3], params[i,4]))*params[i,2];
         }else{
           dens[i] = exp(student_t_lpdf(x|params[i,5],params[i,3], params[i,4]))^params[i,2];
-       }
-      
-    }else if(params[i,1] == 3){
-        if(pool_type == 1){
-            dens[i] = exp(gamma_lpdf(x|params[i,3], params[i,4]))*params[i,2];
-        }else{
-            dens[i] = exp(gamma_lpdf(x|params[i,3], params[i,4]))^params[i,2];
-        }  
-            
-    }else if(params[i,1] == 4){
-    
-        if(pool_type == 1){
-            dens[i] = exp(lognormal_lpdf(x|params[i,3], params[i,4]))*params[i,2];
-        }else{
-             dens[i] = exp(lognormal_lpdf(x|params[i,3], params[i,4]))^params[i,2];
         }
         
-    }else if(params[i,1] == 5){
-     if(pool_type == 1){
-            dens[i] = exp(beta_lpdf(x|params[i,3], params[i,4]))*params[i,2];
+      }else if(params[i,1] == 3){
+        if(pool_type == 1){
+          dens[i] = exp(gamma_lpdf(x|params[i,3], params[i,4]))*params[i,2];
         }else{
-            dens[i] = exp(beta_lpdf(x|params[i,3], params[i,4]))^params[i,2];
+          dens[i] = exp(gamma_lpdf(x|params[i,3], params[i,4]))^params[i,2];
+        }  
+        
+      }else if(params[i,1] == 4){
+        
+        if(pool_type == 1){
+          dens[i] = exp(lognormal_lpdf(x|params[i,3], params[i,4]))*params[i,2];
+        }else{
+          dens[i] = exp(lognormal_lpdf(x|params[i,3], params[i,4]))^params[i,2];
         }
-      
-      
+        
+      }else if(params[i,1] == 5){
+        if(pool_type == 1){
+          dens[i] = exp(beta_lpdf(x|params[i,3], params[i,4]))*params[i,2];
+        }else{
+          dens[i] = exp(beta_lpdf(x|params[i,3], params[i,4]))^params[i,2];
+        }
+        
+        
       } 
-
+      
     }
     
-      
-    return(log(sum(dens)));
+    
+    if(pool_type == 1){
+      return(log(sum(dens)));
+    }else{
+      return(log(prod(dens)));
+    }
     
   }
-
+  
   
 }
 
@@ -102,8 +119,8 @@ data {
   vector[n] d;            // censoring indicator (1=observed, 0=censored)
   int H;                  // number of covariates
   matrix[n,H] X;          // matrix of covariates (with n rows and H columns)
-  vector[H] mu_beta;	    // mean of the covariates coefficients
-  vector<lower=0> [H] sigma_beta;   // sd of the covariates coefficients
+  vector[H] beta_lower;	    //lower bound for the covariate coefficients
+  vector[H] beta_upper;   // upper bound for the covariate coefficients
   
   vector[n] a0; //Power prior for the observations
   
@@ -116,22 +133,32 @@ data {
   
   int n_experts[n_time_expert];
   int pool_type;
-
+  
   real param_expert[max(n_experts),5,n_time_expert];
   vector[St_indic ? n_time_expert : 0] time_expert;
-
+  
+  real St_lower;
+  real St_upper;
+  int<lower = 0, upper = 1> expert_plus_data;
   
 }
 
 parameters {
-  vector[H] beta;         // Coefficients in the linear predictor (including intercept)
+  vector[H] beta_exp;         // Coefficients in the linear predictor (including intercept)
 }
 
 transformed parameters {
+  vector[H] beta;
   vector[n] linpred;
   vector[n] mu;
-  vector[n_time_expert] St_expert;
- 
+  vector<lower=St_lower,upper=St_upper>[n_time_expert] St_expert;
+  
+  beta[1] = log(beta_exp[1]);
+  
+  for(i in 2:H){
+    beta[i] = log(beta_exp[i]); // Transformation to make it linear on the outcome scale (i.e. exp)
+  }
+  
   
   linpred = X*beta;
   for (i in 1:n) {
@@ -139,27 +166,35 @@ transformed parameters {
   }
   
   for (i in 1:n_time_expert){
-  if(St_indic == 1){
-	
-		St_expert[i] = exp(log_Sind(time_expert[i],mu[id_St]));
-
-	 }else{    
-	   St_expert[i] = Surv_diff(mu[id_trt],mu[id_comp]);
-  	}
+    if(St_indic == 1){
+      
+      St_expert[i] = exp(log_Sind(time_expert[i],mu[id_St]));
+      
+    }else{    
+      St_expert[i] = Surv_diff(mu[id_trt],mu[id_comp]);
+    }
   }
 }
 
 model {
-  beta ~ normal(mu_beta,sigma_beta);
-  t ~ surv_exponential(d,mu, a0);
   
+  beta_exp[1] ~ scale_exp(time_expert[1]);
+  
+  for(i in 2:H){
+    beta_exp[i] ~ uniform(beta_lower, beta_upper);
+  }
+  
+  
+  if(expert_plus_data){
+    t ~ surv_exponential(d,mu, a0);
+  }
   
   for (i in 1:n_time_expert){
-     
-     target += log_density_dist(param_expert[,,i],
-                                 St_expert[i],
-                                 n_experts[i],
-                                 pool_type);
+    
+    target += log_density_dist(param_expert[,,i],
+                               St_expert[i],
+                               n_experts[i],
+                               pool_type);
   }
   
   

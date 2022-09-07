@@ -146,8 +146,13 @@ plts_pool[[i]] <- expertsurv:::makePoolPlot(fit= fit.eval[[i]],
                                        nx = 200,
                                        addquantile = FALSE,
                                        fs = 12,
-                                       expertnames = NULL)
+                                       expertnames = paste0("Expert ",1:nrow(fit.eval[[i]]$Normal)))
 
+plts_pool[[i]] <- plts_pool[[i]]+
+  scale_color_brewer(palette = "Paired")+
+  ylim(0,30)+
+  xlab("S(t)")+
+  theme(legend.title=element_blank())
 dfs_pool[[i]] <-  plts_pool[[i]][["data"]]
 
 #best_fit_index  <- apply(fit.eval[[i]]$ssq[,dist_considered], 1, which.min)
@@ -164,7 +169,7 @@ for(j in 1:length(best_fit_loc)){
         pool.df_output[j,
                        1:length(fit.eval.dist[[j]][j,])] <-  as.numeric(as.vector(fit.eval.dist[[j]][j,]))
 }
-dfs_expert[[i]] <- data.frame(dist = best_fit, wi = 1, pool.df_output)
+dfs_expert[[i]] <- data.frame(dist = best_fit, wi = 1/nrow(pool.df_output), pool.df_output)
 }
 
 
@@ -172,6 +177,7 @@ ggpubr::ggarrange(plts_pool[[1]]+
             theme(legend.title = element_blank()), plts_pool[[2]]+ ylab("")+
             theme(legend.title = element_blank()),  
           labels = c("Year 4", "Year 5"),
+          vjust =1,
           ncol = 2, nrow = 1,common.legend = T,legend="bottom")
 
 ggsave(filename = paste0(pathway, "Year 4 & 5 Distributions.png"),
@@ -196,6 +202,45 @@ k1 <- 1
 
 mle.ests_rps <- flexsurvspline(Surv(time, event) ~ 1, data=digitized_IPD, k=1, scale="hazard")
 mle.ests_lno <- flexsurvreg(Surv(time, event) ~ 1, data=digitized_IPD, dist="lno")
+mle.ests_exp <- flexsurvreg(Surv(time, event) ~ 1, data=digitized_IPD, dist="exp")
+mle.ests_wph <- flexsurvreg(Surv(time, event) ~ 1, data=digitized_IPD, dist="weibullPH")
+mle.ests_llo <- flexsurvreg(Surv(time, event) ~ 1, data=digitized_IPD, dist="llogis")
+mle.ests_wei <- flexsurvreg(Surv(time, event) ~ 1, data=digitized_IPD, dist="weibull")
+mle.ests_wph <- flexsurvreg(Surv(time, event) ~ 1, data=digitized_IPD, dist="weibullPH")
+mle.ests_gom <- flexsurvreg(Surv(time, event) ~ 1, data=digitized_IPD, dist="gompertz")
+mle.ests_gam <- flexsurvreg(Surv(time, event) ~ 1, data=digitized_IPD, dist="gamma")
+mle.ests_gga<- flexsurvreg(Surv(time, event) ~ 1, data=digitized_IPD, dist="gengamma.orig")
+
+
+init_fun_gga <- function(...){
+  
+  res <- as.numeric(mvtnorm::rmvnorm(n = 1, mean = mle.ests_gga$res.t[,1], sigma = mle.ests_gga$cov/20))
+  beta_jags = c(-res[2],0)
+  
+  list(beta_exp = pmin(exp(beta_jags),1000),
+       r = min(exp(res[1]),100),
+       b = min(exp(res[3]), 100))
+}
+
+init_fun_gomp <- function(...){
+ 
+  res <- as.numeric(mvtnorm::rmvnorm(n = 1, mean = mle.ests_gom$res.t[,1], sigma = mle.ests_gom$cov))
+  beta <- c(res[2],0)
+  
+  list(beta_exp = exp(beta),
+       alpha = res[1])
+}
+
+
+init_fun_gam <- function(...){
+  res <- as.numeric(mvtnorm::rmvnorm(n = 1, mean = mle.ests_gam$res.t[,1], sigma = mle.ests_gam$cov))
+  beta <- c(res[2],0)
+  
+  list(beta_exp = exp(beta),
+       alpha = exp(res[1]))
+}
+
+
 
 #We have to initialize the MCMC sampler at parameters which have positive probability
 #we use a Multinormal Density centred at the MLE with the covariance matrix (both obtained from flexsurv) 
@@ -203,10 +248,192 @@ mle.ests_lno <- flexsurvreg(Surv(time, event) ~ 1, data=digitized_IPD, dist="lno
 init_fun_rps <- function(...){list(gamma=as.numeric(mvtnorm::rmvnorm(n = 1, mean = mle.ests_rps$res[,1],
                                                                      sigma = mle.ests_rps$cov)))}
 
+
 init_fun_lnorm <- function(...){
-  res <- as.numeric(mvtnorm::rmvnorm(n = 1, mean = mle.ests_lno$res.t[,1], sigma = mle.ests_lno$cov))
-  list(beta =c(res[1],0),
-       alpha = res[2])}
+#Can generate values outside allowable range
+  res <- as.numeric(mvtnorm::rmvnorm(n = 1, mean = mle.ests_lno$res.t[,1], sigma = mle.ests_lno$cov/20))
+  beta <- c(res[1],0)
+  
+  list(beta = beta,
+       alpha = res[2])
+}
+#res_test <- init_fun_lnorm()
+#plnorm(c(48,60), meanlog =res_test$beta[1], sdlog = res_test$alpha, lower.tail = F )
+
+
+init_fun_llogis <- function(...){
+  res <- as.numeric(mvtnorm::rmvnorm(n = 1, mean = mle.ests_llo$res.t[,1], sigma = mle.ests_llo$cov))
+  beta <- c(res[2],0)
+  
+  list(beta_exp = exp(beta),
+       alpha = exp(res[1]))
+}
+
+init_fun_exp <- function(...){
+ # res <- as.numeric(rnorm(n = 1, mean = mle.ests_exp$res.t[,1]),sd =  mle.ests_exp$res.t[,4]/50)
+  res <-  as.numeric(mle.ests_exp$res.t[,1])
+  list(beta_exp =exp(c(res[1],0)))
+}
+
+#res_test <- init_fun_exp()
+#plnorm(c(48,60), meanlog =res_test$beta[1], sdlog = res_test$alpha, lower.tail = F )
+
+init_fun_wph <- function(...){
+  res <- as.numeric(mvtnorm::rmvnorm(n = 1, mean = mle.ests_wph$res.t[,1], sigma = mle.ests_wph$cov))
+  beta <- c(res[2],0)
+  
+  list(beta_exp = exp(beta),
+       alpha = exp(res[1]))
+}
+
+
+
+init_fun_wei <- function(...){
+  res <- as.numeric(mvtnorm::rmvnorm(n = 1, mean = mle.ests_wei$res.t[,1], sigma = mle.ests_wei$cov/10))
+  beta <- c(res[2],0)
+  list(beta_exp = exp(beta),
+       alpha = exp(res[1]))
+}
+
+
+
+
+survHE:::load_availables()
+undebug(expertsurv:::compute_ICs_stan)
+m.all_expert_no_data <- expertsurv:::fit.models.expert(formula=Surv(time,event)~1,data=digitized_IPD,
+                                                       distr=c("llo"),method="hmc",
+                                                       opinion_type = "survival",
+                                                       param_expert = list(param_expert[[1]]),
+                                                       pool_type = "linear pool",
+                                                       k = k1,
+                                                       times_expert = c(4)*12,
+                                                       iter = 50000,
+                                                       #a0 = rep(0.00000001, nrow(digitized_IPD_no_data)),
+                                                       chains =n.chains,
+                                                       thin = 10,
+                                                       init = list(rps = lapply(rep(1, n.chains), init_fun_rps),
+                                                                   lno = lapply(rep(1, n.chains), init_fun_lnorm),
+                                                                   exp = lapply(rep(1, n.chains), init_fun_exp),
+                                                                   wph = lapply(rep(1, n.chains), init_fun_wph),
+                                                                   llo = lapply(rep(1, n.chains), init_fun_llogis),
+                                                                   exp = lapply(rep(1, n.chains), init_fun_exp),
+                                                                   wei = lapply(rep(1, n.chains), init_fun_wei)),
+                                                       expert_plus_data =0)
+
+
+plot_test <- plts_pool[[1]]$data %>% filter(ftype == "linear pool")
+
+St_sep_comb <- rstan::extract(m.all_expert_no_data$models$`log-Normal`, pars = c('St_expert')) 
+dens_model <- density(St_sep_comb$St_expert)
+plot(dens_model$x, y = dens_model$y, main = "Log-Normal", ylim =c(0,max(plot_test$fx, dens_model$y)), type = "l", col = "blue", xlim = c(0,1))
+lines(plot_test$x, y = plot_test$fx)
+
+
+St_sep_comb <- rstan::extract(m.all_expert_no_data$models$`log-Logistic`, pars = c('St_expert')) 
+dens_model <- density(St_sep_comb$St_expert)
+plot(dens_model$x, y = dens_model$y, main = "log-Logistic", ylim =c(0,max(plot_test$fx, dens_model$y)), type = "l", col = "blue", xlim = c(0,1))
+lines(plot_test$x, y = plot_test$fx)
+
+
+
+St_sep_comb <- rstan::extract(m.all_expert_no_data$models$`Royston-Parmar`, pars = c('St_expert')) 
+dens_model <- density(St_sep_comb$St_expert)
+plot(dens_model$x, y = dens_model$y, main = "Royston-Parmar", ylim =c(0,max(plot_test$fx, dens_model$y)), type = "l")
+lines(plot_test$x, y = plot_test$fx)
+
+
+
+St_sep_comb <- rstan::extract(m.all_expert_no_data$models$WeibullPH, pars = c('St_expert')) 
+dens_model <- density(St_sep_comb$St_expert)
+plot(dens_model$x, y = dens_model$y, main = "WeibullPH", ylim =c(0,max(plot_test$fx, dens_model$y)), type = "l")
+lines(plot_test$x, y = plot_test$fx)
+
+#m.all_expert_no_data$models$Gompertz
+
+dens1 <- density( m.all_expert_no_data$models$Gompertz$BUGSoutput$sims.matrix[,"St_expert"])
+dens1 <- density( m.all_expert_no_data$models$`Gen. Gamma`$BUGSoutput$sims.matrix[,"St_expert"])
+dens1 <- density( m.all_expert_no_data$models$Gamma$BUGSoutput$sims.matrix[,"St_expert"])
+
+plot(x = dens1$x, y = dens1$y, type = "l", ylim = c(0,max(plot_test$fx, dens_model$y)), xlim = c(0,1), col = "blue", ylab = "Density", xlab = "Survival",
+     main = "Prior generated at two timepoints") #"Non-Uniform Joint Prior" "Approximately Uniform Prior""Prior generated from Normal Distribution"
+lines(plot_test$x, y = plot_test$fx)
+
+
+St_sep_comb <- rstan::extract(m.all_expert_no_data$models$Exponential, pars = c('St_expert')) 
+dens_model <- density(St_sep_comb$St_expert)
+plot(dens_model$x, y = dens_model$y, main = "Exponential", ylim =c(0,max(plot_test$fx, dens_model$y)), type = "l")
+lines(plot_test$x, y = plot_test$fx)
+
+
+
+
+# St_sep_comb <- rstan::extract(m.all_expert_no_data$models$Exponential, pars = c('St_expert')) 
+# plot(density(St_sep_comb$St_expert), main = "Exponential")
+
+
+St_sep_comb <- rstan::extract(m.all_expert_no_data$models$`Weibull (AFT)`, pars = c('St_expert')) 
+dens_model <- density(St_sep_comb$St_expert)
+plot(dens_model$x, y = dens_model$y, main = "Weibull", ylim =c(0,max(plot_test$fx, dens_model$y)), type = "l")
+lines(plot_test$x, y = plot_test$fx)
+
+
+unique(plts_pool[[1]]$data[,"ftype"])
+St_sep_comb <- rstan::extract(model_weibull, pars = c('St_expert',"lp__", "beta[1]")) 
+plot(density(St_sep_comb$St_expert), main = "Weibull")
+
+
+View(m.all_expert_no_data)
+
+undebug(expertsurv:::runHMC)
+m.all_expert_no_data <- expertsurv:::fit.models.expert(formula=Surv(time,event)~1,data=digitized_IPD_no_data,
+                                               distr=c("exp","llo","lno", "wei","rps", "gam", "gomp", "gga"),method="hmc",
+                                               opinion_type = "survival",
+                                               param_expert = list(param_expert[[1]]),
+                                               pool_type = "linear pool",
+                                               k = k1,
+                                               times_expert = c(4)*12,
+                                               iter = 1000,
+                                               a0 = rep(0.00000001, nrow(digitized_IPD_no_data)),
+                                               chains =n.chains,
+                                               thin = 10,
+                                               init = list(rps = lapply(rep(1, n.chains), init_fun_rps),
+                                                           lno = lapply(rep(1, n.chains), init_fun_lnorm),
+                                                           exp = lapply(rep(1, n.chains), init_fun_exp),
+                                                           wph = lapply(rep(1, n.chains), init_fun_wph),
+                                                           llo = lapply(rep(1, n.chains), init_fun_llogis))
+                                               )
+
+
+
+vals <- m.all_expert_no_data$models$Gompertz$BUGSoutput$sims.matrix[, c("St_expert") ]
+#vals <- model$BUGSoutput$sims.matrix[, c("St_expert", "phi_con_test") ]
+
+
+plot(density(vals))
+plot(x = vals[,1], y = vals[,2])
+
+
+plot(density(vals)$x)
+
+undebug(output_diag)
+expertsurv:::output_diag(m.all_expert_no_data, plot = "density")
+
+m.all_expert_no_data <- expertsurv:::fit.models.expert(formula=Surv(time,event)~1,data=digitized_IPD_no_data,
+                                                       distr=c("exp","llo", "wei","rps", "gam", "gomp", "gga"),method="hmc",
+                                                       opinion_type = "survival",
+                                                       param_expert = list(param_expert[[1]]),
+                                                       pool_type = "linear pool",
+                                                       k = k1,
+                                                       times_expert = c(4)*12,
+                                                       iter = 10000,
+                                                       a0 = rep(0.0001, nrow(digitized_IPD_no_data)),
+                                                       chains =n.chains,
+                                                       # priors = list(lno = list(sigma_beta = c(5,5)),
+                                                       #               gga = list(sigma_beta = c(1,1))),
+                                                       # init = list(rps = lapply(rep(1, n.chains), init_fun_rps),
+                                                       #             lno = lapply(rep(1, n.chains), init_fun_lnorm))
+)
+
 
 
 m.all_expert <- expertsurv:::fit.models.expert(formula=Surv(time,event)~1,data=digitized_IPD,
@@ -218,21 +445,59 @@ m.all_expert <- expertsurv:::fit.models.expert(formula=Surv(time,event)~1,data=d
                                    times_expert = c(4,5)*12,
                                    iter = 10000,
                                    chains =n.chains,
-                                   priors = list(lno = list(sigma_beta = c(5,5)),
-                                                 gga = list(sigma_beta = c(1,1))),
                                    init = list(rps = lapply(rep(1, n.chains), init_fun_rps),
-                                               lno = lapply(rep(1, n.chains), init_fun_lnorm)))
+                                               lno = lapply(rep(1, n.chains), init_fun_lnorm),
+                                               exp = lapply(rep(1, n.chains), init_fun_exp))
+                                   )
+
+
 models <- names(m.all_expert$models)
+psa_outuput <- list()
 
-library(ggmcmc)
+for(i in 1:length(m.all_expert$models)){
+  psa <- make.surv(fit = m.all_expert,mod = i, nsim = 1000, t = seq(0, 80, by = 1))
+  #psa.plot(psa)
+  df_temp  <- t(apply(psa$mat[[1]], 1,quantile, probs = c(0.025, 0.5,.975))) %>% data.frame()
+  df_temp$time <- seq(0, 80, by = 1)
+  mod_name <- names(m.all_expert$models)[i]
+  psa_outuput[[mod_name]] <- df_temp %>% mutate(model = mod_name)
+  
+}
 
-#Dirchlet approach will probably not work if changepoint is towards end of sample
+df_final <- do.call(rbind.data.frame, psa_outuput)
 
-gg.obj2_jags <- ggs(coda::as.mcmc(m.all_expert$models$Gamma)) 
+plt.expert <- ggplot(data = df_final, aes(y = X50., x = time, group = factor(model), colour = factor(model)))+
+  geom_line()+
+  # geom_line(aes(y = X97.5., x = time),linetype="dotdash")+
+  # geom_line(aes(y = X2.5., x = time), linetype="dotdash")+
+  geom_errorbar(data = df_final%>% filter(time == 80),aes(ymin=X2.5., ymax=X97.5.), width=8,
+                position=position_dodge(2))+
+  theme_light()+
+  scale_x_continuous(expand = c(0, 0), limits = c(0,NA), breaks=seq(0, 80, 5)) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0, NA), breaks=seq(0, 1, 0.05))+
+  xlab("Time (months)")+
+  ylab("Survival")+
+  geom_path(data = df.linear, aes(x =x, y =y), colour = "grey", lwd=1.1, inherit.aes = F)+
+  geom_path(data = data.frame(grp = rep(times_expert[1], 10), 
+                              y = seq(0,1, length.out =10)), aes(x = grp, y= y), colour = "grey", lwd=1.1, inherit.aes = F)+
+  geom_polygon(data = df.linear, aes(y = y, x = x), fill = "sky blue", alpha = 0.5,inherit.aes = F)+
+  geom_path(data = df.linear2, aes(x =x, y =y), colour = "grey", lwd=1.1, inherit.aes = F)+
+  geom_polygon(data = df.linear2, aes(y = y, x = x), fill = "sky blue", alpha = 0.5,inherit.aes = F)+
+  geom_path(data = data.frame(grp = rep(times_expert[2], 10), 
+                              y = seq(0,1, length.out =10)), aes(x = grp, y= y), colour = "grey", lwd=1.1, inherit.aes = F) +
+    geom_step(data = datakm, aes(x = time , y = survival), color = "black",inherit.aes = F) + 
+    geom_ribbon(data = datakm, aes(x = time, y = survival, ymin = lower, 
+                                   ymax = upper), alpha = 0.2, color = "grey",inherit.aes = F)
+  
 
-gg.obj2_stan <- ggs(m.all_expert$models$`log-Normal`) %>% filter(Parameter %in%  c("beta[1]","St_expert[1]"))
 
-ggmcmc(gg.obj2_stan,file="model_simple-diag-stan.pdf")
+ggsave("plt.png")
+
+
+
+
+# gg.obj2_stan <- ggs(m.all_expert$models$`log-Normal`) %>% filter(Parameter %in%  c("beta[1]","St_expert[1]"))
+# ggmcmc(gg.obj2_stan,file="model_simple-diag-stan.pdf")
 
 
 
@@ -252,6 +517,11 @@ df.linear <- subset(dfs_pool[[1]], ftype == pool_type_eval) %>% rename(y = x) %>
 df.linear2 <- subset(dfs_pool[[2]], ftype == pool_type_eval) %>% rename(y = x) %>% 
   mutate(x = times_expert[2] + fx*scale)
 
+library(RColorBrewer)
+display.brewer.all(colorblindFriendly = TRUE)
+
+plot.survHE(m.all_expert, add.km = T, t = 0:80)+
+  scale_color_brewer(palette = "Set1")
 
 
 plt.expert  <- plot.survHE(m.all_expert, add.km = T, t = 0:80)+
@@ -266,9 +536,22 @@ plt.expert  <- plot.survHE(m.all_expert, add.km = T, t = 0:80)+
   geom_path(data = df.linear2, aes(x =x, y =y), colour = "grey", lwd=1.1, inherit.aes = F)+
   geom_polygon(data = df.linear2, aes(y = y, x = x), fill = "sky blue", alpha = 0.5)+
   geom_path(data = data.frame(grp = rep(times_expert[2], 10), 
-                              y = seq(0,1, length.out =10)), aes(x = grp, y= y), colour = "grey", lwd=1.1, inherit.aes = F)
+                              y = seq(0,1, length.out =10)), aes(x = grp, y= y), colour = "grey", 
+                              lwd=1.1, inherit.aes = F)
 
 
+
+
+
+
+if (add.km == TRUE) {
+  datakm = lapply(1:length(survHE_objs), function(i) {
+    make_data_surv(survHE_objs[[i]], mods = 1, nsim = 1, 
+                   t = t, newdata = newdata, add.km = add.km)[[2]] %>% 
+      mutate(object_name = as.factor(names(survHE_objs)[i]))
+  }) %>% bind_rows() %>% group_by(object_name, model_name) %>% 
+    mutate(mods_id = cur_group_id()) %>% ungroup()
+}
 
 
 # psa <- make.surv(fit = m.all, nsim = 1000, t = seq(.1, 80), mod = 1)
@@ -301,7 +584,8 @@ m.all_expert_vague <- expertsurv:::fit.models.expert(formula=Surv(time,event)~1,
                                                priors = list(lno = list(sigma_beta = c(5,5)),
                                                              gga = list(sigma_beta = c(1,1))),
                                                init = list(rps = lapply(rep(1, n.chains), init_fun_rps),
-                                                           lno = lapply(rep(1, n.chains), init_fun_lnorm)))
+                                                           lno = lapply(rep(1, n.chains), init_fun_lnorm),
+                                                           exp = lapply(rep(1, n.chains), init_fun_exp)))
 
 plt.vague <- plot(m.all_expert_vague, add.km = T, t = 0:80)+
   theme_light()+
@@ -311,7 +595,44 @@ plt.vague <- plot(m.all_expert_vague, add.km = T, t = 0:80)+
   ylab("")
 
 
+
+models <- names(m.all_expert_vague$models)
+psa_outuput <- list()
+
+for(i in 1:length(m.all_expert_vague$models)){
+  psa <- make.surv(fit = m.all_expert_vague,mod = i, nsim = 1000, t = seq(0, 80, by = 1))
+  #psa.plot(psa)
+  df_temp  <- t(apply(psa$mat[[1]], 1,quantile, probs = c(0.025, 0.5,.975))) %>% data.frame()
+  df_temp$time <- seq(0, 80, by = 1)
+  mod_name <- names(m.all_expert_vague$models)[i]
+  psa_outuput[[mod_name]] <- df_temp %>% mutate(model = mod_name)
+  
+}
+
+df_final <- do.call(rbind.data.frame, psa_outuput)
+
+plt.vague <- ggplot(data = df_final, aes(y = X50., x = time, group = factor(model), colour = factor(model)))+
+  geom_line()+
+  # geom_line(aes(y = X97.5., x = time),linetype="dotdash")+
+  # geom_line(aes(y = X2.5., x = time), linetype="dotdash")+
+  geom_errorbar(data = df_final%>% filter(time == 80),aes(ymin=X2.5., ymax=X97.5.), width=8,
+                position=position_dodge(2))+
+  theme_light()+
+  scale_x_continuous(expand = c(0, 0), limits = c(0,NA), breaks=seq(0, 80, 5)) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0, NA), breaks=seq(0, 1, 0.05))+
+  xlab("Time (months)")+
+  ylab("Survival")+
+  geom_step(data = datakm, aes(x = time , y = survival), color = "black",inherit.aes = F) + 
+  geom_ribbon(data = datakm, aes(x = time, y = survival, ymin = lower, 
+                                 ymax = upper), alpha = 0.2, color = "grey",inherit.aes = F)
+
+
+
+
 ### Outputs for Publication ----
+
+DIC_comp <- data.frame(Model =names(m.all_expert$models),
+                       DIC_expert = m.all_expert$model.fitting$dic ) %>% arrange(DIC_expert) %>% mutate_if(is.numeric, round,digits = 2)
 
 
 DIC_comp <- data.frame(Model =names(m.all_expert_vague$models),
