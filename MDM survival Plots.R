@@ -14,9 +14,9 @@ library("kableExtra")
 
 ## Example Publication: ELIANA Trial Data ---- 
 
-pathway <- "~/PhD/Expert Survival/"
+pathway <- "C:/Users/phili/OneDrive/PhD/R packages/expertsurv"
 
-Survival.df <- read.xlsx(paste0(pathway, "ELIANA OS.xlsx"), 1) %>% data.frame()
+Survival.df <- read.xlsx(paste0(pathway, "data/ELIANA OS.xlsx"), 1) %>% data.frame()
 times.risk <- seq(0, to = 34, by = 2)
 n.risk <- c(79,76,73,68,67,62,55,52,47,42,39,26,21,14,9,5,2,0)
 upper <- sapply(times.risk, function(x){sum(x > Survival.df$time)})
@@ -34,7 +34,7 @@ lower <- c(1, lower)
 
 write.table(data.frame(Time = Survival.df$time,
                        Survival =Survival.df$surv),
-            paste0(pathway,"survival.txt"),
+            paste0(pathway,"data/survival.txt"),
             row.names=T,
             sep="\t")
 
@@ -42,18 +42,18 @@ write.table(data.frame(Interval = 1:length(lower),
                        time = times.risk[-which(times.risk>tail(Survival.df$time, n= 1))],
                        lower =lower, upper = upper,
                        nrisk =  n.risk[-which(times.risk>tail(Survival.df$time, n= 1))]),
-            paste0(pathway,"nrisk.txt"),
+            paste0(pathway,"data/nrisk.txt"),
             row.names=FALSE,
             sep="\t")
 
 #digitize function exports it so it needs to be read back in 
 
-digitise(paste0(pathway,"survival.txt"),
-         paste0(pathway,"nrisk.txt"),
-         km_output = paste0(pathway, "KMdata.txt"),
-         ipd_output = paste0(pathway, "IPDdata.txt"))
+digitise(paste0(pathway,"data/survival.txt"),
+         paste0(pathway,"data/nrisk.txt"),
+         km_output = paste0(pathway, "data/KMdata.txt"),
+         ipd_output = paste0(pathway, "data/IPDdata.txt"))
 
-digitized_IPD <- read.table(paste0(pathway,"IPDdata.txt"))
+digitized_IPD <- read.table(paste0(pathway,"data/IPDdata.txt"))
 
 colnames(digitized_IPD) <- digitized_IPD[1,]
 
@@ -66,7 +66,7 @@ km.fit <- survfit(Surv(time, event)~1, data.frame(digitized_IPD))
 #plot(km.fit)
 
 # Read in Expert opinions
-expert.prob.df <- read.xlsx(paste0(pathway, "Expert Surv Probabilities.xlsx"), sheetName = "Sheet1") %>% data.frame()
+expert.prob.df <- read.xlsx(paste0(pathway, "data/Expert Surv Probabilities.xlsx"), sheetName = "Sheet1") %>% data.frame()
 
 j <- q <- 1
 
@@ -191,7 +191,7 @@ ggpubr::ggarrange(plts_pool[[1]]+
 
 
 
-ggsave(filename = paste0(pathway, "Year 2 & 3 Distributions.png"),
+ggsave(filename = paste0(pathway, "plots/Year 2 & 3 Distributions.png"),
        width =  9, height = 4.5)
 
 
@@ -540,7 +540,3 @@ basecit <- system.file("CITATION", package="base")
 source(basecit, echo=TRUE)
 readCitationFile(basecit)
 
-
-
-
- 

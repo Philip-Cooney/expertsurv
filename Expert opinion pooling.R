@@ -154,7 +154,7 @@ png(file="Expert Opinion Posterior.png",
 width=600, height=350)
 plot(y = gamma_post, seq_gamma, type = "l", 
      xlab = TeX('$\\lambda$'),ylab = "Density",xlim = c(0,4),ylim = c(0,2)) # Log Pooling
-lines(y = d_log, seq_gamma, col = "green")
+#lines(y = d_log, seq_gamma, col = "green")
 #lines(y = gamma_grid_norm, seq_gamma, col = "red", cex= 0.25) #Scaled likelihood
 lines(y = gamma_den_norm,seq_gamma, col = "brown" )
 lines(y = gamma_den_norm_post,seq_gamma, col = "orange" )
