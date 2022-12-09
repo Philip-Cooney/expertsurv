@@ -1,0 +1,8 @@
+Changelog:
+
+
+Fixed issue in compute_ICS_stan function in which if the waic function from loo package could not evaluate waic an error would result.
+Implement logarithmic pooling in the model (was given as an option but not implemented previously).
+Modified the model.fit.plot from survHE to allow for plotting pml, waic etc.
+Changed example to highlight the weights need to sum up to 1.
+Tidied up the folder structure and removed uneeded files.

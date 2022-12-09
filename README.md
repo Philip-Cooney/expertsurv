@@ -6,14 +6,14 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of `expertsurv` is to incorporate expert opinion into an
-analysis of time to event data. `expertsurv` uses many of the core
-functions of the `survHE` package (Baio 2020). Technical details of the
-implementation are detailed in (Cooney and White 2021) and will not be
-repeated here.
+The goal of $\texttt{expertsurv}$ is to incorporate expert opinion into
+an analysis of time to event data. $\texttt{expertsurv}$ uses many of
+the core functions of the $\texttt{survHE}$ package (Baio 2020).
+Technical details of the implementation are detailed in (Cooney and
+White 2021) and will not be repeated here.
 
 The key function is `fit.models.expert` and operates almost identically
-to the `fit.models` function of `survHE`.
+to the `fit.models` function of $\texttt{survHE}$.
 
 ## Installation
 
@@ -73,38 +73,33 @@ timepoint_expert <- 14
 ```
 
 If we wanted opinions at multiple timepoints we just include append
-another list (i.e. param\_expert\_example1\[\[2\]\] with the relevant
-parameters) and specify timepoint\_expert as a vector of length 2 with
+another list (i.e. param_expert_example1\[\[2\]\] with the relevant
+parameters) and specify timepoint_expert as a vector of length 2 with
 the second element being the second timepoint.
 
 For details on assigning distributions to elicited probabilities and
-quantiles see the `SHELF` package (Oakley 2021) and for an overview on
-methodological approaches to eliciting expert opinion see (O’Hagan
-2019). We can see both the individual and pooled distributions using the
-following code (note that we could have used the output of the `fitdist`
-function from `SHELF` if we actually elicited quantiles from an expert):
+quantiles see the $\texttt{SHELF}$ package (Oakley 2021) and for an
+overview on methodological approaches to eliciting expert opinion see
+(O’Hagan 2019). We can see both the individual and pooled distributions
+using the following code (note that we could have used the output of the
+`fitdist` function from $\texttt{SHELF}$ if we actually elicited
+quantiles from an expert):
 
     plot_opinion1<- plot_expert_opinion(param_expert_example1[[1]], 
                         weights = param_expert_example1[[1]]$wi)
     ggsave("Vignette_Example 1 - Expert Opinion.png")
 
-For the linear pool we have a bi-modal distribution which has a 95%
-credible interval between 9.15 − 13.2% calculated with the function
+For the linear pool we have a bi-modal distribution which has a $95\%$
+credible interval between $9.15 - 13.2\%$ calculated with the function
 below:
 
-<div class="figure">
-
-<img src="Vignette_Example 1 - Expert Opinion.png" alt="Expert prior distributions" width="2721" />
-<p class="caption">
-Expert prior distributions
-</p>
-
-</div>
+![Expert prior
+distributions](Vignette_Example%201%20-%20Expert%20Opinion.png)
 
     cred_int_val <- cred_int(plot_opinion1,val = "linear pool", interval = c(0.025, 0.975))
 
 We load and fit the data as follows (in this example considering just
-the Weibull and Gompertz models), with pool\_type = “linear pool”
+the Weibull and Gompertz models), with pool_type = “linear pool”
 specifying that we want to use the default linear pooling (rather than
 “log pool”).
 
@@ -125,7 +120,7 @@ specifying that we want to use the default linear pooling (rather than
 
 Both visual fit and model fit statistics highlight that the Weibull
 model is a poor fit to both the expert opinion and data (black line
-referring to the 95% confidence region for the experts prior belief).
+referring to the $95\%$ confidence region for the experts prior belief).
 
     survHE::model.fit.plot(example1, type = "dic")
 
@@ -135,23 +130,9 @@ referring to the 95% confidence region for the experts prior belief).
       scale_y_continuous(expand = c(0, 0), limits = c(0, NA), breaks=seq(0, 1, 0.05))+
       geom_segment(aes(x = 14, y = cred_int_val[1], xend = 14, yend = cred_int_val[2]))
 
-<div class="figure">
+![Model Comparison](Vignette_Example%201%20-%20DIC.png)
 
-<img src="Vignette_Example 1 - DIC.png" alt="Model Comparison" width="2721" />
-<p class="caption">
-Model Comparison
-</p>
-
-</div>
-
-<div class="figure">
-
-<img src="Vignette_Example 1.png" alt="Survival function with Expert prior" width="2721" />
-<p class="caption">
-Survival function with Expert prior
-</p>
-
-</div>
+![Survival function with Expert prior](Vignette_Example%201.png)
 
 ## Expert Opinion on Survival of a comparator arm
 
@@ -180,21 +161,15 @@ unique(survHE::data$arm)
                                             param_expert = param_expert_example2)
 
 We can remove the impact of expert opinion by running the same model in
-the `survHE` package. Alternatively we note that a ℬ(1, 1) distribution
-is uniform on the survival probability and does not change the
-likelihood.
+the $\texttt{survHE}$ package. Alternatively we note that a
+$\mathcal{B}(1,1)$ distribution is uniform on the survival probability
+and does not change the likelihood.
 
     param_expert_vague <- list()
     param_expert_vague[[1]] <- data.frame(dist = "beta", wi = 1, param1 = 1, param2 = 1, param2 = NA)
 
-<div class="figure">
-
-<img src="Vignette_Example 2.png" alt="Survival function with Expert prior (left) and Vague prior (right)" width="3000" />
-<p class="caption">
-Survival function with Expert prior (left) and Vague prior (right)
-</p>
-
-</div>
+![Survival function with Expert prior (left) and Vague prior
+(right)](Vignette_Example%202.png)
 
 The survival function for “arm 1” has been shifted downwards slightly,
 however the covariate for the accelerated time factor has markedly
@@ -223,47 +198,41 @@ shape to be positive.
                                                          id_trt = 1, # Survival difference is Mean_surv[id_trt]- Mean_surv[id_comp] 
                                                          param_expert = param_expert3)
 
-<div class="figure">
-
-<img src="Vignette_Example 3.png" alt="Survival difference" width="3000" />
-<p class="caption">
-Survival difference
-</p>
-
-</div>
+![Survival difference](Vignette_Example%203.png)
 
 ## Compatability with survHE
 
 As stated in the introduction this package relies on many of the core
-functions of the `survHE` package (Baio 2020) (i.e. note the use of
-`survHE::model.fit.plot` in the first example, meaning that the function
-is sourced directly from `survHE`). In theory a new version of `survHE`
-could result in a lack of compatibility with this package, however, any
-required changes should be minor. Because the objective of this package
-was to fit the models with expert opinion, plot the survival curves and
-compare the goodness of fit, these capabilities (which have been
-presented in this README) have been tested for compatibility. Other
-functions should (in theory) be compatible (again by adding `survHE::`
-to the relevant function), however, I have not tested all these
-potential use cases. If you run in issues, bugs or just features which
-you feel would be useful, please let me know (<phcooney@tcd.ie>) and I
-will investigate and update as required.
+functions of the $\texttt{survHE}$ package (Baio 2020) (i.e. note the
+use of `survHE::model.fit.plot` in the first example, meaning that the
+function is sourced directly from $\texttt{survHE}$). In theory a new
+version of $\texttt{survHE}$ could result in a lack of compatibility
+with this package, however, any required changes should be minor.
+Because the objective of this package was to fit the models with expert
+opinion, plot the survival curves and compare the goodness of fit, these
+capabilities (which have been presented in this README) have been tested
+for compatibility. Other functions should (in theory) be compatible
+(again by adding `survHE::` to the relevant function), however, I have
+not tested all these potential use cases. If you run in issues, bugs or
+just features which you feel would be useful, please let me know
+(<phcooney@tcd.ie>) and I will investigate and update as required.
 
-Additionally I have made modifications to some of the `survHE` functions
-to accommodate JAGS models (by changing the namespace of the `survHE`
-environment). These should have no impact on the operation of `survHE`
-and these changes are only invoked when `expertsurv` is loaded. However,
-in the situation where you would like to revert to `survHE` functions
-during the session, simply run the following:
+Additionally I have made modifications to some of the $\texttt{survHE}$
+functions to accommodate JAGS models (by changing the namespace of the
+$\texttt{survHE}$ environment). These should have no impact on the
+operation of $\texttt{survHE}$ and these changes are only invoked when
+$\texttt{expertsurv}$ is loaded. However, in the situation where you
+would like to revert to $\texttt{survHE}$ functions during the session,
+simply run the following:
 
     unloadNamespace("survHE") #Unload survHE and associated name spaces
     require("survHE") #reload survHE
 
 One practical difference between the packages is the calculation of DIC
-(Deviance Information Criterion). In `survHE` the posterior median is
-used as the plug-in estimate for the log-likelihood, while we use the
-posterior mean as per the definition of DIC by (Spiegelhalter et al.
-2002), noting that both estimates should be very similar.
+(Deviance Information Criterion). In $\texttt{survHE}$ the posterior
+median is used as the plug-in estimate for the log-likelihood, while we
+use the posterior mean as per the definition of DIC by (Spiegelhalter et
+al. 2002), noting that both estimates should be very similar.
 
 ## Survival curves implied by Expert Opinion alone
 
@@ -306,14 +275,7 @@ at the timepoint at which there is expert opinion.
     main = "90% interval for survival with St from Beta(10,100)")
     lines(y = St_sum[2,], x = time )
 
-<div class="figure">
-
-<img src="Survival without Data.png" alt="Predicted survival without data" width="480" />
-<p class="caption">
-Predicted survival without data
-</p>
-
-</div>
+![Predicted survival without data](Survival%20without%20Data.png)
 
 ## Model Diagnostics
 
@@ -354,7 +316,7 @@ Modeling.” *Journal of Statistical Software* 95 (14): 1–47.
 
 Cooney, Philip, and Arthur White. 2021. “Utilizing Expert Opinion to
 Inform Extrapolation of Survival Models.”
-<http://arxiv.org/abs/2112.02288>.
+<https://arxiv.org/abs/2112.02288>.
 
 </div>
 
