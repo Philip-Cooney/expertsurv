@@ -46,15 +46,15 @@ param_expert_example1 <- list()
 
 
 param_expert_example1[[1]] <- data.frame(dist = c("norm","t"),
-                                         wi = c(1,1),
+                                         wi = c(0.5,0.5), # Ensure Weights sum to 1
                                          param1 = c(0.1,0.12),
                                          param2 = c(0.005,0.005),
                                          param3 = c(NA,3))
 param_expert_example1
 #> [[1]]
-#>   dist wi param1 param2 param3
-#> 1 norm  1   0.10  0.005     NA
-#> 2    t  1   0.12  0.005      3
+#>   dist  wi param1 param2 param3
+#> 1 norm 0.5   0.10  0.005     NA
+#> 2    t 0.5   0.12  0.005      3
 
 #Naturally we will specify the timepoint for which these probabilities where elicited
 
@@ -89,19 +89,20 @@ quantiles from an expert):
                         weights = param_expert_example1[[1]]$wi)
     ggsave("Vignette_Example 1 - Expert Opinion.png")
 
-For the linear pool we have a bi-modal distribution which has a $95\%$
-credible interval between $9.15 - 13.2\%$ calculated with the function
-below:
+For the log pool we have a uni-modal distribution (in contrast to the
+bi-modal linear pool) which has a $95\%$ credible interval between
+$9.0−11.9\%$ calculated with the function below:
 
 ![Expert prior
-distributions](Vignette_Example%201%20-%20Expert%20Opinion.png)
+distributions](plots/Vignette_Example%201%20-%20Expert%20Opinion.png)
 
     cred_int_val <- cred_int(plot_opinion1,val = "linear pool", interval = c(0.025, 0.975))
 
 We load and fit the data as follows (in this example considering just
-the Weibull and Gompertz models), with pool_type = “linear pool”
-specifying that we want to use the default linear pooling (rather than
-“log pool”).
+the Weibull and Gompertz models), with pool_type = “log pool” specifying
+that we want to use the logarithmic pooling (rather than default “linear
+pool”). We do this as we wish to compare the results to the penalized
+maximum likelihood estimates in the next section.
 
 
     data2 <- survHE::data %>% rename(status = censored) %>% mutate(time2 = ifelse(time > 10, 10, time),
@@ -124,15 +125,81 @@ referring to the $95\%$ confidence region for the experts prior belief).
 
     survHE::model.fit.plot(example1, type = "dic")
 
+    #N.B. survHE::plot plots the survival function at the posterior mean parameter values
+    #     while it is more robust to use the entire posterior sample (make.surv), however, in this case both results are similar. 
+
      plot(example1, add.km = T, t = 0:30)+
       theme_light()+
       scale_x_continuous(expand = c(0, 0), limits = c(0,NA), breaks=seq(0, 30, 2)) + 
       scale_y_continuous(expand = c(0, 0), limits = c(0, NA), breaks=seq(0, 1, 0.05))+
       geom_segment(aes(x = 14, y = cred_int_val[1], xend = 14, yend = cred_int_val[2]))
 
-![Model Comparison](Vignette_Example%201%20-%20DIC.png)
+![Model Comparison](plots/Vignette_Example%201%20-%20DIC.png)
 
-![Survival function with Expert prior](Vignette_Example%201.png)
+![Survival function with Expert prior](plots/Vignette_Example%201.png)
+
+## Expert Opinion using Penalized Maximum Likelihood
+
+We can also fit the model by Penalized Maximum Likelihood approaches
+through the $\texttt{flexsurv}$ package (Jackson 2016). Full integration
+of this function with the package is under development and currently is
+only implemented for survival probabilities (not mean survival
+difference).
+
+We require to source the functions in “Flexsurv functions v2.R”
+available in the Github folder. It should be noted that the results will
+be very similar to the Bayesian approach when the expert opinion is
+unimodal (as maximum liklelihood produces a point estimate), therefore
+we use the logarithmic pool which is unimodal. The functions return
+flexsurvreg objects so the regular plot, summary functions work without
+modification. We find that the AIC values also favour the Gompertz model
+by a large factor (not shown).
+
+    #source("~/Flexsurv functions v2.R")
+    expert_opinion<-  list()
+
+    #Create - the data to add to the flexsurv function
+    expert_opinion$param_expert <- make_data_expert(param_expert_example1, timepoint_expert)
+    expert_opinion$times <- timepoint_expert
+    expert_opinion$pool <- 0 #linear pool is 1; log is 0
+
+    #Only currently implemented for survival probabilities 
+
+    if(expert_opinion$pool == 0){
+      expert_opinion$k_norm <-  get_k_norm(param_expert_example1)
+    }else{
+      expert_opinion$k_norm <-  NULL
+    }
+
+    #Fit the models - returns a flexsurv object so all flexsurv functions work on it.
+    fit_expert_mle_weibull <- try({flexsurvreg(formula = Surv(time2, status2) ~ 1, 
+                                               data = data2, dist="weibullPH",expert_opinion = expert_opinion)},
+                                  silent = TRUE)
+
+    fit_expert_mle_gompertz <- try({flexsurvreg(formula = Surv(time2, status2) ~ 1, 
+                                                data = data2, dist="gompertz",expert_opinion = expert_opinion)},
+                                   silent = TRUE)
+
+    gompertz_summary <- summary(fit_expert_mle_gompertz,t = seq(0,30, by = 0.1))
+
+    ## Plot the outputs
+    png("MLE-Weibull-Gomp.png", width = 600, height = 400)
+    plot(fit_expert_mle_weibull, t = seq(0,30, by = 0.1),xlim= c(0,30),ci = F, xlab = "Time", ylab = "Survival" )
+    lines(x = gompertz_summary[[1]][,"time"], y = gompertz_summary[[1]][,"est"], col = "blue")
+    segments(x0 = timepoint_expert, y0 =  cred_int_val[1], y1 =  cred_int_val[2], col = "orange")
+    legend("topright", legend=c("Weibull", "Gompertz"),
+           col=c("red", "blue"), lty=1:2, cex=0.8,
+           title="Survival analysis with MLE", text.font=4, bg='lightblue')
+    dev.off()
+
+![Survival function with Expert Information-Penalized Maximum
+Likelihood](plots/MLE-Weibull-Gomp.png)
+
+After using this function you and wish to use the regular flexsurv
+pacakge you should run the following commands:
+
+        unloadNamespace("flexsurv") #Unload flexsurv and associated name spaces
+        require("flexsurv") #reload flexsurv
 
 ## Expert Opinion on Survival of a comparator arm
 
@@ -169,7 +236,7 @@ and does not change the likelihood.
     param_expert_vague[[1]] <- data.frame(dist = "beta", wi = 1, param1 = 1, param2 = 1, param2 = NA)
 
 ![Survival function with Expert prior (left) and Vague prior
-(right)](Vignette_Example%202.png)
+(right)](plots/Vignette_Example%202.png)
 
 The survival function for “arm 1” has been shifted downwards slightly,
 however the covariate for the accelerated time factor has markedly
@@ -198,7 +265,7 @@ shape to be positive.
                                                          id_trt = 1, # Survival difference is Mean_surv[id_trt]- Mean_surv[id_comp] 
                                                          param_expert = param_expert3)
 
-![Survival difference](Vignette_Example%203.png)
+![Survival difference](plots/Vignette_Example%203.png)
 
 ## Compatability with survHE
 
@@ -228,54 +295,34 @@ simply run the following:
     unloadNamespace("survHE") #Unload survHE and associated name spaces
     require("survHE") #reload survHE
 
-One practical difference between the packages is the calculation of DIC
-(Deviance Information Criterion). In $\texttt{survHE}$ the posterior
-median is used as the plug-in estimate for the log-likelihood, while we
-use the posterior mean as per the definition of DIC by (Spiegelhalter et
-al. 2002), noting that both estimates should be very similar.
-
-## Survival curves implied by Expert Opinion alone
-
-In some situations it may be of interest to see the range of predicted
-survival functions given the expert opinion. The easiest solution is to
-simulate two or more observations. In order to remove the effect of
-these data points we supply the following argument to the
-`fit.models.expert` function which essentially sets the likelihood
-contribution to zero for these points:
-
-    a0 = rep(0.001,nrow(df1))
-
-Using Stan and JAGS to simulate these “posteriors” is inefficient and
-because of lack of identifiability (due to having no data), Markov Chain
-Monte Carlo diagnostics will suggest there is a problem. A more
-efficient approach for the Weibull distribution is sketched out below
-and (similar to (Ouwens 2018)) would be to:
-
--   Simulate times from the Survival distribution
--   Simulate values of the shape from a vague distribution
--   Reexpress the scale in terms of the shape
-
-As we can see the 90% credible intervals are very wide, narrowing only
-at the timepoint at which there is expert opinion.
-
-
-    nsims <- 10000
-    Surv_samp <- rbeta(nsims, 10, 100)
-    ancs <- runif(nsims, 0, 10) #shape
-    time_expert <- 14
-    loc <- exp((ancs*log(time_expert)-log(-log(Surv_samp)))/ancs)
-
-    time <- c(0:20)
-    res <- cbind(ancs,loc)
-
-    St <- apply(res, 1, function(x){pweibull(time,x[1],x[2], lower.tail = F )})
-    St_sum <- apply(St, 1, quantile, probs = c(0.1, 0.9), na.rm = T)
-
-    plot(y = St_sum[1,], x = time, type= "l", xlab = "Time", ylab = "St",
-    main = "90% interval for survival with St from Beta(10,100)")
-    lines(y = St_sum[2,], x = time )
-
-![Predicted survival without data](Survival%20without%20Data.png)
+<!-- One practical difference between the packages is the calculation of DIC (Deviance Information Criterion). In  $\texttt{survHE}$ the posterior median is used as the plug-in estimate for the log-likelihood, while we use the posterior mean as per the definition of DIC by [@Spiegelhalter.2003], noting that both estimates should be very similar.  -->
+<!-- ## Survival curves implied by Expert Opinion alone -->
+<!-- In some situations it may be of interest to see the range of predicted survival functions given the expert opinion. The easiest solution is to simulate two or more observations. In order to remove the effect of these data points we supply the following argument to the `fit.models.expert` function which essentially sets the likelihood contribution to zero for these points: -->
+<!-- ``` -->
+<!-- a0 = rep(0.001,nrow(df1)) -->
+<!-- ``` -->
+<!-- Using Stan and JAGS to simulate these "posteriors" is inefficient and because of lack of identifiability (due to having no data), Markov Chain Monte Carlo diagnostics will suggest there is a problem. A more efficient approach for the Weibull distribution is sketched out below and (similar to [@Ouwens.2018]) would be to: -->
+<!--  - Simulate times from the Survival distribution  -->
+<!--  - Simulate values of the shape from a vague distribution -->
+<!--  - Reexpress the scale in terms of the shape  -->
+<!--  As we can see the 90% credible intervals are very wide, narrowing only at the timepoint at which there is expert opinion. -->
+<!-- ``` -->
+<!-- nsims <- 10000 -->
+<!-- Surv_samp <- rbeta(nsims, 10, 100) -->
+<!-- ancs <- runif(nsims, 0, 10) #shape -->
+<!-- time_expert <- 14 -->
+<!-- loc <- exp((ancs*log(time_expert)-log(-log(Surv_samp)))/ancs) -->
+<!-- time <- c(0:20) -->
+<!-- res <- cbind(ancs,loc) -->
+<!-- St <- apply(res, 1, function(x){pweibull(time,x[1],x[2], lower.tail = F )}) -->
+<!-- St_sum <- apply(St, 1, quantile, probs = c(0.1, 0.9), na.rm = T) -->
+<!-- plot(y = St_sum[1,], x = time, type= "l", xlab = "Time", ylab = "St", -->
+<!-- main = "90% interval for survival with St from Beta(10,100)") -->
+<!-- lines(y = St_sum[2,], x = time ) -->
+<!-- ``` -->
+<!-- ```{r echo = FALSE, fig.cap = "Predicted survival without data"} -->
+<!-- knitr::include_graphics("Survival without Data.png") -->
+<!-- ``` -->
 
 ## Model Diagnostics
 
@@ -320,6 +367,14 @@ Inform Extrapolation of Survival Models.”
 
 </div>
 
+<div id="ref-flexsurv" class="csl-entry">
+
+Jackson, Christopher. 2016. “<span class="nocase">flexsurv</span>: A
+Platform for Parametric Survival Modeling in R.” *Journal of Statistical
+Software* 70 (8): 1–33. <https://doi.org/10.18637/jss.v070.i08>.
+
+</div>
+
 <div id="ref-OHagan.2019" class="csl-entry">
 
 O’Hagan, Anthony. 2019. “Expert Knowledge Elicitation: Subjective but
@@ -332,26 +387,6 @@ Scientific.” *The American Statistician* 73 (sup1): 69–81.
 
 Oakley, Jeremy. 2021. *SHELF: Tools to Support the Sheffield Elicitation
 Framework*. <https://CRAN.R-project.org/package=SHELF>.
-
-</div>
-
-<div id="ref-Ouwens.2018" class="csl-entry">
-
-Ouwens, Mario. 2018. “Use of Clinical Opinion in the Estimation of
-Survival Extrapolation Distributions.” *ISPOR EU 2018 - Use of Clinical
-Opinion in the Estimation of Survival Extrapolation Distributions*.
-ISPOR.
-<https://www.ispor.org/docs/default-source/presentations/91714pdf.pdf?sfvrsn=a5b2756f_0>.
-
-</div>
-
-<div id="ref-Spiegelhalter.2003" class="csl-entry">
-
-Spiegelhalter, David J., Nicola G. Best, Bradley P. Carlin, and Angelika
-Van Der Linde. 2002. “Bayesian Measures of Model Complexity and Fit.”
-*Journal of the Royal Statistical Society: Series B (Statistical
-Methodology)* 64 (4): 583–639.
-https://doi.org/<https://doi.org/10.1111/1467-9868.00353>.
 
 </div>
 

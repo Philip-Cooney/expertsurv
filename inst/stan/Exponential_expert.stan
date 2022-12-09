@@ -89,7 +89,11 @@ functions {
     }
     
       
-    return(log(sum(dens)));
+    if(pool_type == 1){
+      return(log(sum(dens)));
+    }else{
+      return(log(prod(dens)));
+    }
     
   }
 

@@ -93,7 +93,11 @@ functions {
     }
     
       
-    return(log(sum(dens)));
+      if(pool_type == 1){
+      return(log(sum(dens)));
+      }else{
+      return(log(prod(dens)));
+      }
     
   }
   
@@ -138,7 +142,7 @@ transformed parameters {
   vector[n] mu;
   vector[n_time_expert] St_expert;
 
-  linpred = X*beta;
+  linpred = -(X*beta)/alpha;
   for (i in 1:n) {
     mu[i] = exp(linpred[i]);
   }

@@ -58,7 +58,7 @@ for (i in 1:n_time_expert){
     phi_temp[j,i] <- equals(pool_type,1)*(expert_dens[j,param_expert[j,1,i],i]*param_expert[j,2,i])+equals(pool_type,0)*(expert_dens[j,param_expert[j,1,i],i]^param_expert[j,2,i])
     }
  
-    phi_con[i] <- -log(sum(phi_temp[,i])) + C
+  phi_con[i] <- -log(sum(phi_temp[,i]))*equals(pool_type,1) +  -log(prod(phi_temp[,i]))*equals(pool_type,0) + C #+test_St_expert[i]*C
 
  } 
  
@@ -120,7 +120,7 @@ for (i in 1:n_time_expert){
     phi_temp[j,i] <- equals(pool_type,1)*(expert_dens[j,param_expert[j,1,i],i]*param_expert[j,2,i])+equals(pool_type,0)*(expert_dens[j,param_expert[j,1,i],i]^param_expert[j,2,i])
     }
  
-    phi_con[i] <- -log(sum(phi_temp[,i])) + C
+ phi_con[i] <- -log(sum(phi_temp[,i]))*equals(pool_type,1) +  -log(prod(phi_temp[,i]))*equals(pool_type,0) + C #+test_St_expert[i]*C
 
  } 
 
@@ -185,7 +185,7 @@ for (i in 1:n_time_expert){
     }
  
  
-    phi_con[i] <- -log(sum(phi_temp[,i])) + C
+  phi_con[i] <- -log(sum(phi_temp[,i]))*equals(pool_type,1) +  -log(prod(phi_temp[,i]))*equals(pool_type,0) + C #+test_St_expert[i]*C
  } 
 
 
