@@ -9,8 +9,8 @@
 The goal of $\texttt{expertsurv}$ is to incorporate expert opinion into
 an analysis of time to event data. $\texttt{expertsurv}$ uses many of
 the core functions of the $\texttt{survHE}$ package (Baio 2020).
-Technical details of the implementation are detailed in
-(**Cooney.2021?**) and will not be repeated here.
+Technical details of the implementation are detailed in (Cooney and
+White 2023) and will not be repeated here.
 
 The key function is `fit.models.expert` and operates almost identically
 to the `fit.models` function of $\texttt{survHE}$.
@@ -105,7 +105,7 @@ default “linear pool”). We do this as we wish to compare the results to
 the penalized maximum likelihood estimates in the next section.
 
 
-    data2 <- survHE::data %>% rename(status = censored) %>% mutate(time2 = ifelse(time > 10, 10, time),
+    data2 <- data %>% rename(status = censored) %>% mutate(time2 = ifelse(time > 10, 10, time),
                                                                   status2 = ifelse(time> 10, 0, status))
 
     #Set the opinion type to "survival"
@@ -125,7 +125,7 @@ referring to the $95\%$ confidence region for the experts prior belief).
 
     model.fit.plot(example1, type = "dic")
 
-    #N.B. survHE::plot plots the survival function at the posterior mean parameter values
+    #N.B. plot.expertsurv (ported directly from survHE) plots the survival function at the posterior mean parameter values
     #     while it is more robust to use the entire posterior sample (make.surv), however, in this case both results are similar. 
 
      plot(example1, add.km = T, t = 0:30)+
@@ -163,8 +163,10 @@ Bayesian model.
 <!-- knitr::include_graphics("plots/MLE-Weibull-Gomp.png") -->
 <!-- ``` -->
 
-After using this function you and wish to use the regular flexsurv
-pacakge you should run the following commands:
+$\texttt{expertsurv}$ modifies some of the $\texttt{flexsurv}$
+functions, so if you wish to use revert to the original
+$\texttt{flexsurv}$ functions within the same session you should run the
+following commands:
 
         unloadNamespace("flexsurv") #Unload flexsurv and associated name spaces
         require("flexsurv") #reload flexsurv
@@ -182,7 +184,7 @@ In this situation we place an opinion on the comparator arm.
 ``` r
 #Check the coding of the arm variable
 #Comparator is 0, which is our id_St
-unique(survHE::data$arm)
+unique(data$arm)
 #> [1] 0 1
 ```
 
@@ -235,46 +237,36 @@ shape to be positive.
 
 ![Survival difference](plots/Vignette_Example_3.png)
 
-## Compatability with survHE and flexsurv
+## Compatability with underlying packages survHE and flexsurv
 
 As stated in the introduction this package relies on many of the core
-functions of the $\texttt{survHE}$ package (Baio 2020) (i.e. note the
-use of `survHE::model.fit.plot` in the first example, meaning that the
-<<<<<<< HEAD
-function is sourced directly from $\texttt{survHE}=\text{v}1.1.2$). In
-theory a newer version of $\texttt{survHE}$ could result in a lack of
-compatibility with this package, therefore, we suggest using the
-$\texttt{survHE}=\text{v}1.1.2$ version such issues appear. The same
-applies albeit to a lesser extent with the $\texttt{flexsurv}$ package
-\[flexsurv\] and we suggest $\texttt{flexsurv}=\text{v}2.0$.
-=======
-function is sourced directly from $\texttt{survHE}$). In theory a new
-version of $\texttt{survHE}$ could result in a lack of compatibility
-with this package, therefore, we require the
-$\texttt{survHE}=\text{v}1.1.2$. The same applies albeit to a lesser
-extent with the $\texttt{flexsurv}$ package \[flexsurv\] and we require
-$\texttt{flexsurv}=\text{v}2.0$.
->>>>>>> 956706852fc857e6c616272ed969b157419c035c
+functions of the $\texttt{survHE}$ package (Baio 2020). Because we do
+not not implement expert opinion with INLA and because future versions
+of $\texttt{survHE}$ may introduce conflicts with the current
+implementation, we have directly ported the key functions from
+$\texttt{survHE}$ into the package so that $\texttt{expertsurv}$ no
+longer imports $\texttt{survHE}$ (of course all credit for those
+functions goes to (Baio 2020) and co-authors).
 
-Because the objective of this package was to fit the models with expert
-opinion, plot the survival curves and compare the goodness of fit, these
-capabilities (which have been presented in this README) have been tested
-for compatibility. Other functions should (in theory) be compatible
-(again by adding `survHE::` to the relevant function), however, I have
-not tested all these potential use cases. If you run in issues, bugs or
-just features which you feel would be useful, please let me know
-(<phcooney@tcd.ie>) and I will investigate and update as required.
+In theory the same concern could apply to $\texttt{flexsurv}$ package
+\[flexsurv\], however, this package has been released for some years and
+it is unlikely that the code architecture would change sufficiently to
+cause issues (however, for reference $\texttt{expertsurv}$ was built
+with $\texttt{flexsurv}=\text{v}2.0$).
 
-Additionally I have made modifications to some of the $\texttt{survHE}$
-functions to accommodate JAGS models (by changing the namespace of the
-$\texttt{survHE}$ environment). These should have no impact on the
-operation of $\texttt{survHE}$ and these changes are only invoked when
-$\texttt{expertsurv}$ is loaded. However, in the situation where you
-would like to revert to $\texttt{survHE}$ functions during the session,
-simply run the following (with the same required for flexsurv):
+If you run in issues, bugs or just features which you feel would be
+useful, please let me know (<phcooney@tcd.ie>) and I will investigate
+and update as required.
 
-    unloadNamespace("survHE") #Unload survHE and associated name spaces
-    require("survHE") #reload survHE
+As mentioned, I have made modifications to some of the
+$\texttt{flexsurv}$ functions to accommodate exper opinion (by changing
+the functions within the namespace of the $\texttt{flexsurv}$
+environment). These should have no impact on the operation of
+$\texttt{flexsurv}$ and these changes are only invoked when
+$\texttt{flexsurv}$ is loaded. However, in the situation where you would
+like to revert to orginal $\texttt{flexsurv}$ functions during the
+session, simply run the following:
+
 
     unloadNamespace("flexsurv") #Unload flexsurv and associated name spaces
     require("flexsurv") #reload flexsurv
@@ -344,6 +336,15 @@ Baio, Gianluca. 2020. “<span class="nocase">survHE</span>: Survival
 Analysis for Health Economic Evaluation and Cost-Effectiveness
 Modeling.” *Journal of Statistical Software* 95 (14): 1–47.
 <https://doi.org/10.18637/jss.v095.i14>.
+
+</div>
+
+<div id="ref-Cooney.2023" class="csl-entry">
+
+Cooney, Philip, and Arthur White. 2023. “Direct Incorporation of Expert
+Opinion into Parametric Survival Models to Inform Survival
+Extrapolation.” *Medical Decision Making* 1 (1): 0272989X221150212.
+<https://doi.org/10.1177/0272989X221150212>.
 
 </div>
 

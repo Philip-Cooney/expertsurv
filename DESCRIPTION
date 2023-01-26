@@ -1,6 +1,6 @@
 Package: expertsurv
 Title: Incorporate Expert Opinion with Parametric Survival models
-Version: 0.0.0.9000
+Version: 1.0.0
 Authors@R: 
     c(person(given = "Philip",
            family = "Cooney",
@@ -9,7 +9,7 @@ Authors@R:
            comment = c(ORCID = "0000-0001-9649-0195")),
      person(given = "Arthur",
            family = "White",
-           role = "ctb",
+           role = "ths",
            comment = c(ORCID = "0000-0002-7268-5163")))
 Description: This package modifies the `survHE` package to enable users to incorporate expert opinion into survival analysis. Expert Opinion can be provided on the survival probabilities at certain timepoint(s) or for the difference in mean survival between two treatment arms.
 License: MIT + file LICENSE
@@ -26,16 +26,16 @@ Depends:
     ggplot2
 Imports: 
     methods,
+    stats,
     Rcpp (>= 0.12.0),
     RcppParallel (>= 5.0.1),
     rstan (>= 2.18.1),
     rstantools (>= 2.1.1),
-    survHE (>= 1.1.2),
     magrittr (>= 2.0),
     tibble,
     SHELF,
-    rjags,
-    R2jags
+    stringr,
+    rms
 LinkingTo: 
     BH (>= 1.66.0),
     Rcpp (>= 0.12.0),
@@ -46,5 +46,7 @@ LinkingTo:
 SystemRequirements: GNU make
 Suggests: 
     rmarkdown,
-    knitr
+    knitr,
+    rjags,
+    R2jags
 VignetteBuilder: knitr

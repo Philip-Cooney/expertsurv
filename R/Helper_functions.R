@@ -726,10 +726,7 @@ get_density <- function(dist, param1, param2, param3 = NULL, x = seq(0.01, 0.98,
       a <- -Inf
       b <- +Inf
     }
-  # param1 <- 1
-  # param2 <- 2
-  # param3 <- 3
-  # expertsurv:::pt.scaled(c(b,a), param3, param1, param2)
+
    if(dist == "t"){
     #From SHELF reference Student.t Parameters of the fitted t distributions. 
     #Note that (X - location) / scale has a standard t distribution 
@@ -766,7 +763,7 @@ get_density <- function(dist, param1, param2, param3 = NULL, x = seq(0.01, 0.98,
 #'
 #' @return
 #' @export
-#'
+#' @importFrom sfsmisc integrate.xy
 #' @examples
 #' \dontrun{
 #' cred_int(plot_opinion1,val = "linear pool", interval = c(0.025, 0.975))
@@ -777,11 +774,11 @@ cred_int <- function(plt_obj, val = "linear pool",interval = c(0.025, 0.975)){
   
   plt_df <- plt_obj$data %>% filter(expert == val) %>% data.frame()
   
-  total_integral <- sfsmisc::integrate.xy(plt_df$x, plt_df$fx)
+  total_integral <- integrate.xy(plt_df$x, plt_df$fx)
   partial_integral <- rep(NA, nrow(plt_df))
   partial_integral[1] <- 0
   for(i in 2:nrow(plt_df)){
-    partial_integral[i] <- sfsmisc::integrate.xy(plt_df$x[1:i], plt_df$fx[1:i])/total_integral
+    partial_integral[i] <- integrate.xy(plt_df$x[1:i], plt_df$fx[1:i])/total_integral
   }
   
   plt_df$cdf <- partial_integral
@@ -846,7 +843,7 @@ makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x",
                                          xu, ql, qu, nx)
     x[, i] <- densitydata$x
     if(St_indic ==1){ #Truncated between 0 and 1
-    k_trunc <-   sfsmisc::integrate.xy(x = x[,1], fx = densitydata$fx)
+    k_trunc <-   integrate.xy(x = x[,1], fx = densitydata$fx)
     }else{
     k_trunc  <-1
     }
@@ -863,7 +860,7 @@ makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x",
     warning("Print Non finite density for log pooling - Results invalid")
   }
   fx.logp <- apply(fx ^ weight, 1, prod)
-  k_norm <- sfsmisc::integrate.xy(x = x[,1], fx = fx.logp)
+  k_norm <- integrate.xy(x = x[,1], fx = fx.logp)
   fx.logp <- fx.logp/k_norm
   
   #Should integrate to 1 after normalization
@@ -1017,7 +1014,7 @@ plot_expert_opinion <- function(object, xl_plt = NULL, xu_plt = NULL, weights = 
       xu_plt  <- min(1,xu_plt)
     }
     
-    plt <- expertsurv::makePoolPlot(fit= object,
+    plt <- makePoolPlot(fit= object,
                                      xl =xl_plt,
                                      xu =xu_plt,
                                      d = "best",
@@ -1039,7 +1036,7 @@ plot_expert_opinion <- function(object, xl_plt = NULL, xu_plt = NULL, weights = 
     
     object$times_expert <- 2 #Just for compatibility
     
-    expert_dens_list <- expertsurv::expert_dens(object, probs =  seq(0.001, 0.99, by = 0.005))
+    expert_dens_list <- expert_dens(object, probs =  seq(0.001, 0.99, by = 0.005))
     
     lower <- as.numeric(head(expert_dens_list$expert_density, n = 1)-0.1)
     upper <- as.numeric(tail(expert_dens_list$expert_density, n = 1)+0.1)
@@ -1068,7 +1065,7 @@ plot_expert_opinion <- function(object, xl_plt = NULL, xu_plt = NULL, weights = 
     fit_shelf  <- SHELF::fitdist(vals = expert_dens_list$expert_density,
                           probs_mat, lower = lower, upper = upper)
     
-    plt <- expertsurv::makePoolPlot(fit= fit_shelf,
+    plt <- makePoolPlot(fit= fit_shelf,
                                      xl = xl_plt,
                                      xu = xu_plt,
                                      d = "best",
@@ -1115,7 +1112,6 @@ plot_expert_opinion <- function(object, xl_plt = NULL, xu_plt = NULL, weights = 
 #' @param ... Other arguments may be required depending on the example. See [README](https://github.com/Philip-Cooney/expertsurv/blob/master/README.md) for details.
 #'
 #' @return
-#' @import survHE
 #' @importFrom magrittr %>%
 #' @export
 #' @md
@@ -1195,9 +1191,94 @@ fit.models.expert <- function(formula = NULL, data, distr = NULL, method = "hmc"
    fit.models(formula = formula, data = data, distr = distr, method = method, exArgs = exArgs)
 }
 
-
-
-
+## SET OF UTILITY FUNCTIONS TO INCLUDE SURVIVAL ANALYSIS RESULTS INTO A HEALTH ECONOMIC MODEL
+## Gianluca Baio + Will Browne + Peter Konings (10 Jan 2017)
+#' Fit parametric survival analysis for health economic evaluations
+#' 
+#' Runs the survival analysis with several useful options, using either MLE
+#' (via flexsurv) or a Bayesian approach (via R-INLA or rstan)
+#' 
+#' On object in the class \code{expertsurv} containing the following elements
+#' 
+#' @param formula a formula specifying the model to be used, in the form
+#' \code{Surv(time,event)~treatment[+covariates]} for flexsurv, or
+#' \code{inla.surv(time,event)~treatment[+covariates]} for INLA
+#' @param data A data frame containing the data to be used for the analysis.
+#' This must contain data for the 'event' variable. In case there is no
+#' censoring, then \code{event} is a column of 1s.
+#' @param distr a (vector of) string(s) containing the name(s) of the model(s)
+#' to be fitted.  Available options are:
+#' 
+#' \code{flexsurv}:
+#' "exponential","gamma","genf","gengamma","gompertz","weibull",
+#' "weibullPH","loglogistic","lognormal" \code{INLA}:
+#' "exponential","weibull","lognormal","loglogistic" \code{hmc}:
+#' "exponential","gamma","genf","gengamma","gompertz","weibull","weibullPH",
+#' "loglogistic","lognormal"
+#' @param method A string specifying the inferential method (\code{'mle'},
+#' \code{'inla'} or \code{'hmc'}). If \code{method} is set to \code{'hmc'},
+#' then \code{survHE} will write suitable model code in the Stan language
+#' (according to the specified distribution), prepare data and initial values
+#' and then run the model.
+#' @param \dots Additional options (for INLA or HMC).
+#' 
+#' 
+#' **HMC** specific options \code{chains} = number of chains to run in the HMC
+#' (default = 2) \code{iter} = total number of iterations (default = 2000)
+#' \code{warmup} = number of warmup iterations (default = iter/2) \code{thin} =
+#' number of thinning (default = 1) \code{control} = a list specifying
+#' Stan-related options, eg \code{control=list(adapt_delta=0.85)} (default =
+#' NULL) \code{seed} = the random seed (to make things replicable) \code{pars}
+#' = a vector of parameters (string, default = NA) \code{include} = a logical
+#' indicator (if FALSE, then the pars are not saved; default = TRUE)
+#' \code{priors} = a list (of lists) specifying the values for the parameters
+#' of the prior distributions in the models \code{save.stan} = a logical
+#' indicator (default = FALSE). If TRUE, then saves the data list for Stan and
+#' the model file(s)
+#' @return \item{models}{ A list containing the fitted models. These contain
+#' the output from the original inference engine (\code{flexsurv}, \code{INLA}
+#' or \code{rstan}). Can be processed using the methods specific to the
+#' original packages, or via \code{survHE}-specific methods (such as
+#' \code{plot}, \code{print}) or other specialised functions (eg to extrapolate
+#' the survival curves, etc). } \item{model.fitting}{ A list containing the
+#' output of the model-fit statistics (AIC, BIC, DIC). The AIC and BIC are
+#' estimated for all methods, while the DIC is only estimated when using
+#' Bayesian inference. } \item{method}{ A string indicating the method used to
+#' fit the model, ie \code{'mle'}, \code{'inla'} or \code{'hmc'}.  }
+#' \item{misc}{ A list containing the time needed to run the model(s) (in
+#' seconds), the formula used, the results of the Kaplan-Meier analysis (which
+#' is automatically performed using \code{npsurv}) and the original data frame.
+#' }
+#' @author Gianluca Baio
+#' @seealso \code{make.surv}
+#' @template refs
+#' @keywords Parametric survival models Bayesian inference via Hamiltonian
+#' Monte Carlo Bayesian inference via Integrated Nested Laplace Approximation
+#' @examples
+#' \dontrun{
+#' # Loads an example dataset from 'flexsurv'
+#' data(bc)
+#' 
+#' # Fits the same model using the 3 inference methods
+#' mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
+#'     distr="exp",method="mle")
+#' hmc = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
+#'     distr="exp",method="hmc")
+#'     
+#' # Prints the results in comparable fashion using the survHE method
+#' print(mle)
+#' print(hmc)
+#' 
+#' # Or visualises the results using the original packages methods
+#' print(mle,original=TRUE)
+#' print(hmc,original=TRUE)
+#' 
+#' # Plots the survival curves and estimates
+#' plot(mle)
+#' plot(mle,hmc,labs=c("MLE","HMC"),colors=c("black","blue"))
+#' }
+#'
+#' @export fit.models
 fit.models <- function (formula = NULL, data, distr = NULL, method = "mle", exArgs, 
           ...){
 
@@ -1208,37 +1289,55 @@ fit.models <- function (formula = NULL, data, distr = NULL, method = "mle", exAr
   if (!method %in% c("hmc", "inla", "mle")) {
     stop("Methods available for use are 'mle', 'hmc' or 'inla'")
   }
-  survHE:::check_distributions(method, distr)
+  check_distributions(method, distr)
   if (method == "mle") {
     #cat(crayon::blue("No expert opinion implemented with mle approach \n"))
     
-    res <- format_output_fit.models(lapply(distr, function(x) expertsurv:::runMLE(x, 
+    res <- format_output_fit.models(lapply(distr, function(x)runMLE(x, 
                                                                      exArgs)), method, distr, formula, data)
   }
   if (method == "inla") {
     
-    cat(crayon::blue("No expert opinion implemented with inla approach \n"))
+    error("INLA is not implemented in expertsurv")
     
-    res <- survHE:::format_output_fit.models(lapply(distr, function(x) survHE:::runINLA(x, 
-                                                                      exArgs)), method, distr, formula, data)
+    # res <-format_output_fit.models(lapply(distr, function(x) survHE:::runINLA(x, 
+    #                                                                   exArgs)), method, distr, formula, data)
   }
   if (method == "hmc") {
-    
-    adjust_survHE_func()#Make sure the survHE formulaes are compatible
-    res <- format_output_fit.models(lapply(distr, function(x) expertsurv::runHMC(x, 
+    if(any(distr %in% c("gam", "gomp", "gga"))){
+      
+      if (!isTRUE(requireNamespace("rjags", quietly = TRUE))|!isTRUE(requireNamespace("R2jags", quietly = TRUE))) {
+        stop("You need to install the R packages 'rjags' and 'R2jags' along with JAGS")
+      }
+    }
+        res <- format_output_fit.models(lapply(distr, function(x) runHMC(x, 
                                                                      exArgs)), method, distr, formula, data)
   }
+
   return(res)
 }
 
+#' Helper function to run the survival models using HMC (rstan)
+#' for a given formula and dataset
+#' 
+#' @param x a (vector of) string(s) containing the name(s) of the model(s)
+#' to be fitted
+#' @param exArgs a list of extra arguments passed from the main 'fit.models' 
+#' function
+#' @note Something will go here
+#' @author Gianluca Baio
+#' @seealso fit.models
+#' @references Baio (2020). survHE
+#' @keywords Parametric survival models Hamiltonian Monte Carlo
+#' @noRd 
 runHMC <- function (x, exArgs){
   if (!isTRUE(requireNamespace("rstan", quietly = TRUE))) {
     stop("You need to install the R package 'rstan'. Please run in your R terminal:\n install.packages('rstan')")
   }
   formula <- exArgs$formula
   data = exArgs$data
-  availables <- survHE:::load_availables()
-  d3 <- survHE:::manipulate_distributions(x)$distr3
+  availables <- load_availables()
+  d3 <- manipulate_distributions(x)$distr3
   method <- "hmc"
   if (exists("chains", where = exArgs)) {
     chains <- exArgs$chains
@@ -1365,7 +1464,9 @@ runHMC <- function (x, exArgs){
       modelinits <- NULL
     }
     data.jags <- data.jags[names(data.jags) %!in% "max_param"]
+
     cat(paste0(" \n SAMPLING FOR MODEL '",d,"_expert' NOW.  \n"))
+    suppressWarnings({
     model <-R2jags::jags(model.file = textConnection(get(paste0(d,".jags"))),
                              data=data.jags,
                              n.chains=chains,
@@ -1375,8 +1476,9 @@ runHMC <- function (x, exArgs){
                              n.thin = thin,
                              n.burnin = iter,
                              jags.module = c("glm","dic"))
+     })
 
-    
+
   }else{
     dso <- stanmodels[[paste0(d, "_expert")]]
     model <- rstan::sampling(dso, data.stan, chains = chains, 
@@ -1410,16 +1512,32 @@ runHMC <- function (x, exArgs){
     ## Add in for Jags
   }
   model_name <- d3
+
   list(model = model, aic = ics$aic, bic = ics$bic, dic = ics$dic, 
        dic2 = ics$dic2,waic = ics$waic, pml = ics$pml,  time2run = time_survHE, 
        data.stan = data.stan, save.stan = save.stan, model_name = model_name)
 }
 
-
-
-
+#' Helper function to create data in the correct format for rstan
+#' 
+#' @param formula a formula specifying the model to be used, in the form
+#' \code{Surv(time,event)~treatment[+covariates]} in flexsurv terms, or
+#' \code{inla.surv(time,event)~treatment[+covariates]} in INLA terms.
+#' @param data A data frame containing the data to be used for the analysis.
+#' This must contain data for the 'event' variable. In case there is no
+#' censoring, then \code{event} is a column of 1s.
+#' @return \item{data.stan}{A list containing the variables needed to pass
+#' to 'stan' when calling \code{fit.models} with \code{method="hmc"}}.
+#' @note Something will go here
+#' @author Gianluca Baio
+#' @seealso fit.models
+#' @references Baio (2020). survHE
+#' @keywords Parametric survival models Bayesian inference via Hamiltonian
+#' Monte Carlo 
+#' @importFrom stringr str_replace_all
+#' @noRd 
 make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
-  availables <- survHE:::load_availables()
+  availables <- load_availables()
   method <- "hmc"
   formula_temp <- update(formula, paste(all.vars(formula, data)[1], 
                                         "~", all.vars(formula, data)[2], "+."))
@@ -1483,7 +1601,7 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
   d <- names(availables[[method]][match(distr3, availables[[method]])])
   priors <- list()
   if (exists("priors", where = exArgs)) {
-    abbrs = survHE:::manipulate_distributions(names(exArgs$priors))$distr3
+    abbrs = manipulate_distributions(names(exArgs$priors))$distr3
     pos = grep(distr3, abbrs)
     if (length(pos) > 0) {
       priors = exArgs$priors[[pos]]
@@ -1643,7 +1761,7 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
         
         x.eval <- seq(min_quant, max_quant, length.out = 100)
           dens.eval <- eval_dens_pool(x.eval,param_expert[[i]],pool_type = "log pool",St_indic =data.stan$St_indic)
-          k_norm[i] <- sfsmisc::integrate.xy(x = x.eval,fx = dens.eval)
+          k_norm[i] <- integrate.xy(x = x.eval,fx = dens.eval)
        }
       data.stan$k_norm <- k_norm
 
@@ -1660,9 +1778,25 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
   data.stan	
 }
 
-# model <- fit.weibull
-# distr3 <- "weib"
-# data.stan <- stan.data
+
+#' Helper function to compute the information criteria statistics
+#' when using hmc as the inferential engine. 'rstan' does not do
+#' DIC automatically and AIC/BIC are also not standard for Bayesian
+#' models, so can compute them post-hoc by manipulating the 
+#' likelihood functions.
+#' 
+#' @param model The 'rstan' object with the model fit
+#' @param distr3 The 'rstan' object with the model fit
+#' @return \item{list}{A list containing the modified name of the 
+#' distribution, the acronym (3-letters abbreviation), or the
+#' labels (humane-readable name)}.
+#' @note Something will go here
+#' @author Gianluca Baio
+#' @seealso fit.models
+#' @references Baio (2020). survHE
+#' @keywords Parametric survival models Bayesian inference via Hamiltonian
+#' Monte Carlo Bayesian inference via Integrated Nested Laplace Approximation
+#' @noRd 
 
 compute_ICs_stan <-function (model, distr3, data.stan){
   if (distr3 %!in% c("gam", "gga", "gom")) {
@@ -1713,10 +1847,27 @@ compute_ICs_stan <-function (model, distr3, data.stan){
        pml = PML)
 }
            
-
-
+#' Helper function to format the output of the modelling (produced either
+#' by running 'runMLE', or 'runINLA', 'runHMC'), in a way that is consistent
+#' with the architecture of 'survHE'
+#' 
+#' @param output The output of one of the helper functions used to run the
+#' models.
+#' @param method The method used to do the estimation
+#' @param distr The abbreviated name for the distribution to be used
+#' @param formula The model formula
+#' @param data The dataset used
+#' @return \item{res}{A 'survHE' object containing all the relevant output
+#' conveniently formatted}.
+#' @note Something will go here
+#' @author Gianluca Baio
+#' @seealso fit.models
+#' @references Baio (2020). survHE
+#' @keywords Parametric survival models Bayesian inference via Hamiltonian
+#' Monte Carlo Bayesian inference via Integrated Nested Laplace Approximation
+#' @noRd 
 format_output_fit.models <- function (output, method, distr, formula, data){
-  labs <- survHE:::manipulate_distributions(distr)$labs
+  labs <- manipulate_distributions(distr)$labs
   models <- lapply(output, function(x) x$model)
   model.fitting <- list(aic = unlist(lapply(output, function(x) x$aic)), 
                         bic = unlist(lapply(output, function(x) x$bic)), dic = unlist(lapply(output, 
@@ -1725,10 +1876,10 @@ format_output_fit.models <- function (output, method, distr, formula, data){
                formula = formula, data = data, model_name = unlist(lapply(output, 
                                                                           function(x) x$model_name)))
   if (any(distr == "polyweibull")) {
-    misc$km = lapply(formula, function(f) survHE:::make_KMmake_KM(f, data))
+    misc$km = lapply(formula, function(f) make_KMmake_KM(f, data))
   }
   else {
-    misc$km = survHE:::make_KM(formula, data)
+    misc$km = make_KM(formula, data)
   }
   if (method == "hmc") {
     misc$data.stan <- lapply(output, function(x) x$data.stan)
@@ -1740,7 +1891,7 @@ format_output_fit.models <- function (output, method, distr, formula, data){
   names(models) <- labs
   res <- list(models = models, model.fitting = model.fitting, 
               method = method, misc = misc)
-  class(res) <- "survHE"
+  class(res) <- "expertsurv"
   return(res)
 }
 
@@ -1778,39 +1929,39 @@ make_sim_hmc <- function (m, t, X, nsim, newdata, dist, summary_stat, ...){
 get_Surv <- function(dist, time, param1 = NULL, param2 = NULL, param3 = NULL, log = F, data.stan = NULL){
   
   if(dist == "wei"){
-      return(pweibull(time, 
+      return(stats::pweibull(time, 
                     shape = param1, scale = param2, lower.tail = F, log = log))
   }
   
   if(dist == "wph"){
-      return(pweibullPH(time, 
+      return(flexsurv::pweibullPH(time, 
                       shape = param1, scale = param2, lower.tail = F, log = log))
   }
   
   if(dist == "exp"){
-    return(pexp(time, rate = param1, lower.tail = F, log = log))
+    return(stats::pexp(time, rate = param1, lower.tail = F, log = log))
     
   }
   
   if(dist == "gam"){
-    return(pgamma(time, shape = param1, rate = param2, lower.tail =  F, log = log))
+    return(stats::pgamma(time, shape = param1, rate = param2, lower.tail =  F, log = log))
   }
   
   if(dist == "gga"){
-    return(pgengamma(time, mu = param1, sigma = param2, Q = param3, lower.tail =  F, log = log))
+    return(flexsurv::pgengamma(time, mu = param1, sigma = param2, Q = param3, lower.tail =  F, log = log))
   }
   
   if(dist == "gom"){
-    return(pgompertz(time, shape = param1, rate = param2, lower.tail =  F, log = log))
+    return(flexsurv::pgompertz(time, shape = param1, rate = param2, lower.tail =  F, log = log))
   }
   
   if(dist == "lno"){
-    return(plnorm(time, 
+    return(stats::plnorm(time, 
                   meanlog  = param1, sdlog  = param2, lower.tail = F, log = log))
   }
   
   if(dist == "llo"){
-    return(pllogis(time, 
+    return(flexsurv::pllogis(time, 
                   shape  = param1, scale  = param2, lower.tail = F, log = log))
   }
   
@@ -1818,7 +1969,7 @@ get_Surv <- function(dist, time, param1 = NULL, param2 = NULL, param3 = NULL, lo
     #2 ways to do it -- need to check if it is valid
     #eta <-  param1*data.stan$B_expert[which(time == data.stan$time_expert),] + param2
     #return(exp(-exp(eta)))
-     return(psurvspline(time, gamma = param1, knots= data.stan$knots,lower.tail = F, log = log, offset = param2 ))
+     return(flexsurv::psurvspline(time, gamma = param1, knots= data.stan$knots,lower.tail = F, log = log, offset = param2 ))
     
   }
   
@@ -1829,36 +1980,36 @@ get_Surv <- function(dist, time, param1 = NULL, param2 = NULL, param3 = NULL, lo
 get_mean_diff <- function(dist, time, param1 = NULL, param2 = NULL, param3 = NULL, log = F, data.stan = NULL){
   
   if(dist == "wei"){
-    return(mean_weibull(shape = param1, scale = param2[1])-mean_weibull(shape = param1, scale = param2[2]))
+    return(flexsurv::mean_weibull(shape = param1, scale = param2[1])-mean_weibull(shape = param1, scale = param2[2]))
   }
   
   if(dist == "wph"){
-    return(mean_weibullPH(shape = param1, scale = param2[1])-mean_weibullPH(shape = param1, scale = param2[2]))
+    return(flexsurv::mean_weibullPH(shape = param1, scale = param2[1])-mean_weibullPH(shape = param1, scale = param2[2]))
   }
   
   if(dist == "exp"){
-    return(mean_exp(rate = param1[1])-mean_exp(rate = param1[2]))
+    return(flexsurv::mean_exp(rate = param1[1])-mean_exp(rate = param1[2]))
     
   }
   
   if(dist == "gam"){
-    return(mean_gamma(shape = param1, rate = param2[1])- mean_gamma(shape = param1, rate = param2[2]))
+    return(flexsurv::mean_gamma(shape = param1, rate = param2[1])- mean_gamma(shape = param1, rate = param2[2]))
   }
   
   if(dist == "gga"){
-    return(mean_gengamma(mu = param1[1], sigma = param2, Q = param3)-mean_gengamma(mu = param1[2], sigma = param2, Q = param3))
+    return(flexsurv::mean_gengamma(mu = param1[1], sigma = param2, Q = param3)-mean_gengamma(mu = param1[2], sigma = param2, Q = param3))
   }
   
   if(dist == "gom"){
-    return(mean_gompertz(shape = param1, rate = param2[1])-mean_gompertz(shape = param1, rate = param2[2]))
+    return(flexsurv::mean_gompertz(shape = param1, rate = param2[1])-mean_gompertz(shape = param1, rate = param2[2]))
   }
   
   if(dist == "lno"){
-    return(mean_lnorm(meanlog  = param1[1], sdlog  = param2)-mean_lnorm(meanlog  = param1[2], sdlog  = param2))
+    return(flexsurv::mean_lnorm(meanlog  = param1[1], sdlog  = param2)-mean_lnorm(meanlog  = param1[2], sdlog  = param2))
   }
   
   if(dist == "llo"){
-    return(mean_llogis(shape  = param1[1], scale  = param2)-mean_llogis(shape  = param1[2], scale  = param2))
+    return(flexsurv::mean_llogis(shape  = param1[1], scale  = param2)-mean_llogis(shape  = param1[2], scale  = param2))
   }
   
   # if(dist == "rps"){
@@ -1932,8 +2083,8 @@ lik_rps <- function (x, linpred, linpred.hat, model, data.stan){
   
   if(all(data.stan$X ==0)){
     
-    logf<- apply(gamma, 1, function(x){data.stan$d*log(hsurvspline(data.stan$t, gamma = x, knots = data.stan$knots))+
-        psurvspline(q = data.stan$t, gamma = x, knots =  data.stan$knots, lower.tail = F, log.p =T)})
+    logf<- apply(gamma, 1, function(x){data.stan$d*log(flexsurv::hsurvspline(data.stan$t, gamma = x, knots = data.stan$knots))+
+        flexsurv::psurvspline(q = data.stan$t, gamma = x, knots =  data.stan$knots, lower.tail = F, log.p =T)})
     logf <- t(logf)
   }else{
     logf <- array(dim = dim(linpred))
@@ -1941,8 +2092,8 @@ lik_rps <- function (x, linpred, linpred.hat, model, data.stan){
     for(i in 1:nrow(logf)){
       
       for(j in 1:ncol(logf)){
-        logf[i,j] <- data.stan$d[j]*log(hsurvspline(data.stan$t[j], gamma = gamma[i,], knots = data.stan$knots, offset = linpred[i,j]))+
-          psurvspline(q = data.stan$t[j], gamma = gamma[i,], knots =  data.stan$knots, lower.tail = F, log.p =T, offset = linpred[i,j])
+        logf[i,j] <- data.stan$d[j]*log(flexsurv::hsurvspline(data.stan$t[j], gamma = gamma[i,], knots = data.stan$knots, offset = linpred[i,j]))+
+          flexsurv::psurvspline(q = data.stan$t[j], gamma = gamma[i,], knots =  data.stan$knots, lower.tail = F, log.p =T, offset = linpred[i,j])
         
       }
       
@@ -1951,8 +2102,8 @@ lik_rps <- function (x, linpred, linpred.hat, model, data.stan){
   
 
   for(i in 1:ncol(logf.hat)){
-    logf.hat[i] <- data.stan$d[i]*log(hsurvspline(data.stan$t[i], gamma = gamma.hat, knots = data.stan$knots, offset = linpred.hat[i]))+
-      psurvspline(q = data.stan$t[i], gamma = gamma.hat, knots =  data.stan$knots, lower.tail = F, log.p =T, offset = linpred.hat[i])
+    logf.hat[i] <- data.stan$d[i]*log(flexsurv::hsurvspline(data.stan$t[i], gamma = gamma.hat, knots = data.stan$knots, offset = linpred.hat[i]))+
+      flexsurv::psurvspline(q = data.stan$t[i], gamma = gamma.hat, knots =  data.stan$knots, lower.tail = F, log.p =T, offset = linpred.hat[i])
     
   }
   
@@ -2012,14 +2163,14 @@ lik_wei <- function (x, linpred, linpred.hat, model, data.stan ){
   shape <- alpha <- as.numeric(rstan::extract(model)$alpha)
   shape.hat <- median(shape)
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
-    data.stan$d * log(hweibull(data.stan$t, shape[i], exp(linpred[i, 
-    ]))) + log(1 - pweibull(data.stan$t, shape[i], exp(linpred[i, 
+    data.stan$d * log(flexsurv::hweibull(data.stan$t, shape[i], exp(linpred[i, 
+    ]))) + log(1 - stats::pweibull(data.stan$t, shape[i], exp(linpred[i, 
     ])))
   })), nrow = nrow(linpred), byrow = T)
   
   
-  logf.hat <- matrix(data.stan$d * log(hweibull(data.stan$t, 
-                                                shape.hat, exp(linpred.hat))) + log(1 - pweibull(data.stan$t, 
+  logf.hat <- matrix(data.stan$d * log(flexsurv::hweibull(data.stan$t, 
+                                                shape.hat, exp(linpred.hat))) + log(1 - stats::pweibull(data.stan$t, 
                                                                                                  shape.hat, exp(linpred.hat))), nrow = 1)
   logf.expert <- rep(NA, nrow(linpred))
   
@@ -2049,12 +2200,12 @@ lik_lno <- function (x, linpred, linpred.hat, model, data.stan){
   sigma = as.numeric(rstan::extract(model)$alpha)
   sigma.hat = median(sigma)
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
-    data.stan$d * log(hlnorm(data.stan$t, (linpred[i, ]), 
-                             sigma[i])) + log(1 - plnorm(data.stan$t, (linpred[i, 
+    data.stan$d * log(flexsurv::hlnorm(data.stan$t, (linpred[i, ]), 
+                             sigma[i])) + log(1 - stats::plnorm(data.stan$t, (linpred[i, 
                              ]), sigma[i]))
   })), nrow = nrow(linpred), byrow = T)
-  logf.hat <- matrix(data.stan$d * log(hlnorm(data.stan$t, 
-                                              (linpred.hat), sigma.hat)) + log(1 - plnorm(data.stan$t, 
+  logf.hat <- matrix(data.stan$d * log(flexsurv::hlnorm(data.stan$t, 
+                                              (linpred.hat), sigma.hat)) + log(1 - stats::plnorm(data.stan$t, 
                                                                                           (linpred.hat), sigma.hat)), nrow = 1)
   logf.expert <- rep(NA, nrow(linpred))
 
@@ -2080,12 +2231,12 @@ lik_llo <- function (x, linpred, linpred.hat, model, data.stan){
   sigma = as.numeric(rstan::extract(model)$alpha)
   sigma.hat = median(sigma)
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
-    data.stan$d * log(hllogis(data.stan$t, sigma[i], exp(linpred[i, 
-    ]))) + log(1 - pllogis(data.stan$t, sigma[i], exp(linpred[i, 
+    data.stan$d * log(flexsurv::hllogis(data.stan$t, sigma[i], exp(linpred[i,]))) +
+      log(1 - flexsurv::pllogis(data.stan$t, sigma[i], exp(linpred[i, 
     ])))
   })), nrow = nrow(linpred), byrow = T)
-  logf.hat <- matrix(data.stan$d * log(hllogis(data.stan$t, 
-                                               sigma.hat, exp(linpred.hat))) + log(1 - pllogis(data.stan$t, 
+  logf.hat <- matrix(data.stan$d * log(flexsurv::hllogis(data.stan$t, 
+                                               sigma.hat, exp(linpred.hat))) + log(1 - flexsurv::pllogis(data.stan$t, 
                                                                                                sigma.hat, exp(linpred.hat))), nrow = 1)
   
   logf.expert <- rep(NA, nrow(linpred))
@@ -2117,12 +2268,12 @@ lik_wph <- function (x, linpred, linpred.hat, model, data.stan){
   shape <- alpha <- as.numeric(rstan::extract(model)$alpha)
   shape.hat = median(shape)
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
-    data.stan$d * log(hweibullPH(data.stan$t, shape[i], exp(linpred[i, 
-    ]))) + log(1 - pweibullPH(data.stan$t, shape[i], 
+    data.stan$d * log(flexsurv::hweibullPH(data.stan$t, shape[i], exp(linpred[i, 
+    ]))) + log(1 - flexsurv::pweibullPH(data.stan$t, shape[i], 
                               exp(linpred[i, ])))
   })), nrow = nrow(linpred), byrow = T)
-  logf.hat <- matrix(data.stan$d * log(hweibullPH(data.stan$t, 
-                                                  shape.hat, exp(linpred.hat))) + log(1 - pweibullPH(data.stan$t, 
+  logf.hat <- matrix(data.stan$d * log(flexsurv::hweibullPH(data.stan$t, 
+                                                  shape.hat, exp(linpred.hat))) + log(1 - flexsurv::pweibullPH(data.stan$t, 
                                                                                                      shape.hat, exp(linpred.hat))), nrow = 1)
   
   logf.expert <- rep(NA, nrow(linpred))
@@ -2155,14 +2306,14 @@ lik_gam <- function (x, linpred, linpred.hat, model, data.stan){
   shape.hat <- median(shape)
   
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
-    data.stan$d * log(hgamma(data.stan$t, shape = shape[i], 
+    data.stan$d * log(flexsurv::hgamma(data.stan$t, shape = shape[i], 
                              rate = exp(linpred[i, ]))) + 
-      pgamma(q = data.stan$t,shape[i], rate = exp(linpred[i, ]), lower.tail = F, log = T)
+      stats::pgamma(q = data.stan$t,shape[i], rate = exp(linpred[i, ]), lower.tail = F, log = T)
   })), nrow = nrow(linpred), byrow = T)
 
-  logf.hat <- matrix(data.stan$d * log(hgamma(data.stan$t, 
+  logf.hat <- matrix(data.stan$d * log(flexsurv::hgamma(data.stan$t, 
                                               shape.hat, exp(linpred.hat))) + 
-                       pgamma(data.stan$t,shape.hat, exp(linpred.hat),lower.tail = F,
+                       stats::pgamma(data.stan$t,shape.hat, exp(linpred.hat),lower.tail = F,
                               log = T), nrow = 1)  
   
   logf.expert <- rep(NA, nrow(linpred))
@@ -2191,12 +2342,12 @@ lik_gom <- function (x, linpred, linpred.hat, model, data.stan){
   shape <- alpha <- as.numeric(model$BUGSoutput$sims.matrix[ , grep("alpha",colnames(model$BUGSoutput$sims.matrix))])
   shape.hat = median(shape)
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
-    data.stan$d * log(hgompertz(data.stan$t, shape = shape[i], 
+    data.stan$d * log(flexsurv::hgompertz(data.stan$t, shape = shape[i], 
                                 rate = exp(linpred[i, ]))) + 
-      pgompertz(data.stan$t,shape[i], rate = exp(linpred[i, ]), lower.tail = F, log = T)
+      flexsurv::pgompertz(data.stan$t,shape[i], rate = exp(linpred[i, ]), lower.tail = F, log = T)
   })), nrow = nrow(linpred), byrow = T)
-  logf.hat <- matrix(data.stan$d * log(hgompertz(data.stan$t,shape.hat, exp(linpred.hat))) + 
-                       pgompertz(data.stan$t,shape.hat, exp(linpred.hat), lower.tail = F, log = T), nrow = 1)
+  logf.hat <- matrix(data.stan$d * log(flexsurv::hgompertz(data.stan$t,shape.hat, exp(linpred.hat))) + 
+                       flexsurv::pgompertz(data.stan$t,shape.hat, exp(linpred.hat), lower.tail = F, log = T), nrow = 1)
   
   
   if(data.stan$St_indic == 1){
@@ -2229,14 +2380,14 @@ lik_gga <- function (x, linpred, linpred.hat, model, data.stan){
   d2 <- sapply(data.stan$d,function(x){ifelse(x == 1, 0,1)})
  
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
-      data.stan$d*dgengamma(data.stan$t, 
+      data.stan$d*flexsurv::dgengamma(data.stan$t, 
                                 linpred[i, ], scale[i], q[i], log = T) +
-      d2*pgengamma(data.stan$t,linpred[i, ], scale[i], q[i], log = T, lower.tail = F)})),
+      d2*flexsurv::pgengamma(data.stan$t,linpred[i, ], scale[i], q[i], log = T, lower.tail = F)})),
                               nrow = nrow(linpred), byrow = T)
   
 
-  logf.hat <- matrix(data.stan$d*dgengamma(data.stan$t,linpred.hat,scale.bar, q.bar, log = T) +
-                     d2*pgengamma(data.stan$t, linpred.hat, scale.bar, q.bar, log = T, lower.tail = F),
+  logf.hat <- matrix(data.stan$d*flexsurv::dgengamma(data.stan$t,linpred.hat,scale.bar, q.bar, log = T) +
+                     d2*flexsurv::pgengamma(data.stan$t, linpred.hat, scale.bar, q.bar, log = T, lower.tail = F),
                      nrow = 1)
   
   
@@ -2282,7 +2433,7 @@ get_stats_hmc <- function (x, mod){
     }
 
 
-    res = do.call(eval(parse(text=paste0("survHE:::rescale_stats_hmc_", x$misc$model_name[mod]))), 
+    res = do.call(eval(parse(text=paste0("rescale_stats_hmc_", x$misc$model_name[mod]))), 
                   args = list(table = table, x = x))
 
 
@@ -2306,9 +2457,37 @@ load_availables <- function(){
   return(availables)
 }
 
-print.survHE <-function (x, mod = 1, ...) 
+#' Print a summary of the survival model(s) fitted by \code{fit.models}
+#' 
+#' Prints the summary table for the model(s) fitted, with the estimate of the
+#' parameters
+#' 
+#' 
+#' @param x the \code{survHE} object (the output of the call to
+#' \code{fit.models})
+#' @param mod is the index of the model. Default value is 1, but the user can
+#' choose which model fit to visualise, if the call to fit.models has a vector
+#' argument for distr (so many models are fitted & stored in the same object)
+#' @param \dots additional options, including: \code{digits} = number of
+#' significant digits to be shown in the summary table (default = 6)
+#' \code{original} = a flag to say whether the *original* table
+#' from either \code{flexsurv} or \code{INLA} or \code{rstan} should be printed
+#' @author Gianluca Baio
+#' @template refs
+#' @keywords Parametric survival models
+#' @examples
+#' \dontrun{ 
+#' data(bc)
+#' 
+#' mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
+#'     distr="exp",method="mle")
+#' print(mle)
+#' }
+#' @exportS3Method print
+#' @export print.expertsurv
+print.expertsurv <-function (x, mod = 1, ...) 
 {
-  adjust_survHE_func()
+
   
   exArgs <- list(...)
   availables <- load_availables()
@@ -2334,7 +2513,7 @@ print.survHE <-function (x, mod = 1, ...)
   else {
     method_eval <- paste0("get_stats_", x$method)
     res = do.call(method_eval, args = list(x,mod))
-    survHE:::format_table(x, mod, res, digits)
+    format_table(x, mod, res, digits)
   }
 }
 
@@ -2342,7 +2521,7 @@ print.survHE <-function (x, mod = 1, ...)
 #### Adjusts SurvHE functions:
 
 #error in a rps function 
-adjust_survHE_func <- function(){
+
 
 
 make_sim_hmc <- function (m, t, X, nsim, newdata, dist, summary_stat, ...){
@@ -2381,13 +2560,6 @@ make_sim_hmc <- function (m, t, X, nsim, newdata, dist, summary_stat, ...){
   return(sim)
 }
 
-tmpfun <- get("make_sim_hmc", envir = asNamespace("survHE"))
-environment(make_sim_hmc) <- environment(tmpfun)
-attributes(make_sim_hmc) <- attributes(tmpfun)  
-utils::assignInNamespace("make_sim_hmc", make_sim_hmc, ns="survHE")
-
-
-
 
 rescale_hmc_gam <- function (m, X, linpred){
   if(class(m)== "rjags"){
@@ -2401,11 +2573,6 @@ rescale_hmc_gam <- function (m, X, linpred){
   colnames(sim) <- c("shape", "rate")
   return(sim)
 }
-
-tmpfun <- get("rescale_hmc_gam", envir = asNamespace("survHE"))
-environment(rescale_hmc_gam) <- environment(tmpfun)
-attributes(rescale_hmc_gam) <- attributes(tmpfun)  
-utils::assignInNamespace("rescale_hmc_gam", rescale_hmc_gam, ns="survHE")
 
 
 
@@ -2422,11 +2589,6 @@ rescale_hmc_gom <- function (m, X, linpred){
 }
 
 
-tmpfun <- get("rescale_hmc_gom", envir = asNamespace("survHE"))
-environment(rescale_hmc_gom) <- environment(tmpfun)
-attributes(rescale_hmc_gom) <- attributes(tmpfun)  
-utils::assignInNamespace("rescale_hmc_gom", rescale_hmc_gom, ns="survHE")
-
 rescale_hmc_gga<- function (m, X, linpred){
   
   if(class(m)== "rjags"){
@@ -2441,10 +2603,6 @@ rescale_hmc_gga<- function (m, X, linpred){
   colnames(sim) <- c("mu", "sigma", "Q")
   return(sim)
 }
-tmpfun <- get("rescale_hmc_gga", envir = asNamespace("survHE"))
-environment(rescale_hmc_gga) <- environment(tmpfun)
-attributes(rescale_hmc_gga) <- attributes(tmpfun)  
-utils::assignInNamespace("rescale_hmc_gga", rescale_hmc_gga, ns="survHE")
 
 get_stats_hmc <- function(x, mod){
   
@@ -2478,11 +2636,6 @@ get_stats_hmc <- function(x, mod){
 }
 
 
-tmpfun <- get("get_stats_hmc", envir = asNamespace("survHE"))
-environment(get_stats_hmc) <- environment(tmpfun)
-attributes(get_stats_hmc) <- attributes(tmpfun)  
-utils::assignInNamespace("get_stats_hmc", get_stats_hmc, ns="survHE")
-
 
 rescale_stats_hmc_gam <- function (table, x){
   rate <- matrix(table[grep("rate", rownames(table)),], ncol = 4)
@@ -2490,7 +2643,7 @@ rescale_stats_hmc_gam <- function (table, x){
   shape <- matrix(table[grep("alpha", rownames(table)), 
   ], ncol = 4)
   rownames(shape) <- "shape"
-  effects = survHE:::add_effects_hmc(table, x) #typo in this function
+  effects = add_effects_hmc(table, x) #typo in this function
   res <- rbind(shape, rate, effects)
   if (is.null(dim(res))) {
     names(res) <- c("mean", "se", "L95%", 
@@ -2502,12 +2655,6 @@ rescale_stats_hmc_gam <- function (table, x){
   }
   return(res)
 }
-
-tmpfun <- get("rescale_stats_hmc_gam", envir = asNamespace("survHE"))
-environment(rescale_stats_hmc_gam) <- environment(tmpfun)
-attributes(rescale_stats_hmc_gam) <- attributes(tmpfun)  
-utils::assignInNamespace("rescale_stats_hmc_gam", rescale_stats_hmc_gam, ns="survHE")
-
 
 get_stats_hmc <- function (x, mod){
   if (class(x$models[[mod]]) == "rjags") {
@@ -2546,46 +2693,7 @@ get_stats_hmc <- function (x, mod){
   return(res)
 }
 
-tmpfun <- get("get_stats_hmc", envir = asNamespace("survHE"))
-environment(get_stats_hmc) <- environment(tmpfun)
-attributes(get_stats_hmc) <- attributes(tmpfun)  
-utils::assignInNamespace("get_stats_hmc", get_stats_hmc, ns="survHE")
 
-plot.survHE <- function (...){
-  exArgs = list(...)
-  if (length(names(exArgs)) == 0) {
-    names(exArgs) = paste0("Object", 1:length(exArgs))
-  }
-  if (length(which(names(exArgs) == "")) > 0) {
-    names(exArgs)[which(names(exArgs) == "")] = paste0("Object", 
-                                                       1:length(which(names(exArgs) == "")))
-  }
-  
-  if(exArgs[["Object1"]]$method == "hmc"){
-    warning("By default, this function plots the survival at the posterior mean of the parameters.
-            It is better to use the full posterior distribution.")
-  }
-  
-  if (exists("graph", exArgs)) {
-    graph = exArgs$graph
-  }
-  else {
-    graph = "ggplot"
-  }
-  if (graph == "ggplot") {
-    return(survHE:::plot_ggplot_survHE(exArgs))
-  }
-  if (graph == "base") {
-    do.call(survHE:::plot_base_survHE, exArgs)
-  }
-}
-
-tmpfun <- get("plot.survHE", envir = asNamespace("survHE"))
-environment(plot.survHE) <- environment(tmpfun)
-attributes(plot.survHE) <- attributes(tmpfun)
-utils::assignInNamespace("plot.survHE", plot.survHE, ns="survHE")                               
-                               
-}
                                
 #' Graphical representation of the measures of model fitting based on Information Criteria
 #'
@@ -2624,9 +2732,9 @@ utils::assignInNamespace("plot.survHE", plot.survHE, ns="survHE")
                                                        1:length(which(names(exArgs) == "")))
   }
   w <- which(unlist(lapply(1:length(exArgs), function(i) class(exArgs[[i]]))) == 
-               "survHE")
+               "expertsurv")
   if (length(w) == 0) {
-    stop("Please give at least one 'survHE' object, generated by a call to 'fit.models(...)")
+    stop("Please give at least one 'expertsurv' object, generated by a call to 'fit.models(...)")
   }
   else {
     survHE_objs = lapply(1:length(w), function(i) exArgs[[w[i]]])
@@ -2710,4 +2818,85 @@ utils::assignInNamespace("plot.survHE", plot.survHE, ns="survHE")
   }
   
 mfp+ theme(legend.position = "none")
-}                              
+} 
+ 
+
+integrate.xy <-function (x, fx, a, b, use.spline = TRUE, xtol = 2e-08){
+   if (is.list(x)) {
+     fx <- x$y
+     x <- x$x
+     if (length(x) == 0) 
+       stop("list 'x' has no valid $x component")
+   }
+   if ((n <- length(x)) != length(fx)) 
+     stop("'fx' must have same length as 'x'")
+   if (is.unsorted(x)) {
+     i <- sort.list(x)
+     x <- x[i]
+     fx <- fx[i]
+   }
+   if (any(i <- duplicated(x))) {
+     n <- length(x <- x[!i])
+     fx <- fx[!i]
+   }
+   if (any(diff(x) == 0)) 
+     stop("bug in 'duplicated()' killed me: have still multiple x[]!")
+   if (missing(a)) 
+     a <- x[1]
+   else if (any(a < x[1])) 
+     stop("'a' must NOT be smaller than min(x)")
+   if (missing(b)) 
+     b <- x[n]
+   else if (any(b > x[n])) 
+     stop("'b' must NOT be larger  than max(x)")
+   if (length(a) != 1 && length(b) != 1 && length(a) != length(b)) 
+     stop("'a' and 'b' must have length 1 or same length !")
+   else {
+     k <- max(length(a), length(b))
+     if (any(b < a)) 
+       stop("'b' must be elementwise >= 'a'")
+   }
+   if (use.spline) {
+     xy <- spline(x, fx, n = max(1024, 3 * n))
+     if (xy$x[length(xy$x)] < x[n]) {
+       if (TRUE) 
+         cat("working around spline(.) BUG --- hmm, really?\n\n")
+       xy$x <- c(xy$x, x[n])
+       xy$y <- c(xy$y, fx[n])
+     }
+     x <- xy$x
+     fx <- xy$y
+     n <- length(x)
+   }
+   ab <- unique(c(a, b))
+   BB <- abs(outer(x, ab, "-")) < (xtol * max(b - a))
+   if (any(j <- 0 == colSums(BB))) {
+     y <- approx(x, fx, xout = ab[j])$y
+     x <- c(ab[j], x)
+     i <- sort.list(x)
+     x <- x[i]
+     fx <- c(y, fx)[i]
+     n <- length(x)
+   }
+   dig0 <- floor(-log10(xtol))
+   f.match <- function(x, table, dig) match(signif(x, dig), 
+                                            signif(table, dig))
+   d <- dig0
+   while (anyNA(ai <- f.match(a, x, d))) d <- d - 1/8
+   ai <- rep_len(ai, k)
+   d <- dig0
+   while (anyNA(bi <- f.match(b, x, d))) d <- d - 1/8
+   bi <- rep_len(bi, k)
+   dfx <- fx[-c(1, n)] * diff(x, lag = 2)
+   r <- numeric(k)
+   for (i in 1:k) {
+     a <- ai[i]
+     b <- bi[i]
+     r[i] <- (x[a + 1] - x[a]) * fx[a] + (x[b] - x[b - 1]) * 
+       fx[b] + sum(dfx[seq(a, length = max(0, b - a - 1))])
+   }
+   r/2
+ }
+  
+ 
+ 

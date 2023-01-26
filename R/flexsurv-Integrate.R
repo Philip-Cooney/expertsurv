@@ -90,7 +90,7 @@ logLikFactory <- function (Y, X = 0, weights, bhazard, rtrunc, dlist, inits, dfn
       for(q in 1:length(expert_opinion$times)){
        param_expert_mat  <- abind::adrop(expert_opinion$param_expert[,,q, drop = F],drop = 3)
        #LL_expert[q] <-  log_density_dist(param_expert_mat,psurv_expert[q],nrow(param_expert_mat), expert_opinion$pool)
-       LL_expert[q] <- expertsurv:::expert_log_dens(psurv_expert[q], df= param_expert_mat, expert_opinion$pool, k_norm = expert_opinion$k_norm[q],
+       LL_expert[q] <- expert_log_dens(psurv_expert[q], df= param_expert_mat, expert_opinion$pool, k_norm = expert_opinion$k_norm[q],
                                                     St_indic =expert_opinion$St_indic)
 
       }
@@ -578,7 +578,7 @@ get_k_norm <- function(opinion_list, St_indic = 1){ # Only required if log-pooli
       min_quant <- 0
       max_quant <- 1
     }else{
-      quant.vec <- t(apply(pool.df, 1, function(x){expertsurv:::get_quant_val(
+      quant.vec <- t(apply(pool.df, 1, function(x){get_quant_val(
         dist = x["dist"],
         param1 = x["param1"],
         param2 = x["param2"],
@@ -592,21 +592,31 @@ get_k_norm <- function(opinion_list, St_indic = 1){ # Only required if log-pooli
     x.eval <- seq(min_quant, max_quant, length.out = 100)
     #Find the range of x.eval to integrate over
     # x.eval <- seq(0,1, by = 0.001)
-    dens_eval<- expertsurv:::eval_dens_pool(x.eval,opinion_list[[i]],  pool_type = "log pool", St_indic =St_indic)
-    k_norm[i] <- sfsmisc::integrate.xy(x = x.eval,fx = dens_eval)
+    dens_eval<- eval_dens_pool(x.eval,opinion_list[[i]],  pool_type = "log pool", St_indic =St_indic)
+    k_norm[i] <- integrate.xy(x = x.eval,fx = dens_eval)
    }
   k_norm
 }
 
-
-
+#' Helper function to run the survival models using MLE and flexsurv
+#' 
+#' @param x a string containing the name of the model
+#' to be fitted
+#' #' @param exArgs a list of extra arguments passed from the main 'fit.models' 
+#' function
+#' @note Something will go here
+#' @author Gianluca Baio
+#' @seealso fit.models
+#' @references Baio (2020). survHE
+#' @keywords Parametric survival models Maximum likelihood estimation
+#' @noRd 
 runMLE <- function (x, exArgs){
   #browser()
   formula <- exArgs$formula
   data = exArgs$data
   availables <- load_availables()
-  d3 <- survHE:::manipulate_distributions(x)$distr3
-  x <- survHE:::manipulate_distributions(x)$distr
+  d3 <- manipulate_distributions(x)$distr3
+  x <- manipulate_distributions(x)$distr
   
   expert_opinion_flex<-  list()
   
@@ -722,20 +732,20 @@ runMLE <- function (x, exArgs){
     else {
       timescale <- "log"
     }
-    model_mle <- expertsurv:::flexsurvspline(formula = formula, 
+    model_mle <- flexsurvspline(formula = formula, 
                                          data = data, k = k, knots = knots, bknots = bknots, 
                                          scale = scale, timescale = timescale,expert_opinion = NULL , method = method_mle)
     
-    model <- expertsurv:::flexsurvspline(formula = formula, 
+    model <-flexsurvspline(formula = formula, 
                                       data = data, k = k, knots = knots, bknots = bknots, 
                                       scale = scale, timescale = timescale,expert_opinion = expert_opinion_flex , method = method_mle,inits = model_mle$res[,1])
   }
   else {
  
-   model_mle <- expertsurv:::flexsurvreg(formula = formula, data = data, 
+    model_mle <- flexsurvreg(formula = formula, data = data, 
                                       dist = x, expert_opinion = NULL,method = method_mle)
     
-    model <- expertsurv:::flexsurvreg(formula = formula, data = data, 
+    model <- flexsurvreg(formula = formula, data = data, 
                                    dist = x, expert_opinion = expert_opinion_flex,method = method_mle,inits = model_mle$res[,1])
   }
   toc <- proc.time() - tic
