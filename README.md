@@ -240,12 +240,21 @@ shape to be positive.
 As stated in the introduction this package relies on many of the core
 functions of the $\texttt{survHE}$ package (Baio 2020) (i.e. note the
 use of `survHE::model.fit.plot` in the first example, meaning that the
+<<<<<<< HEAD
 function is sourced directly from $\texttt{survHE}=\text{v}1.1.2$). In
 theory a newer version of $\texttt{survHE}$ could result in a lack of
 compatibility with this package, therefore, we suggest using the
 $\texttt{survHE}=\text{v}1.1.2$ version such issues appear. The same
 applies albeit to a lesser extent with the $\texttt{flexsurv}$ package
 \[flexsurv\] and we suggest $\texttt{flexsurv}=\text{v}2.0$.
+=======
+function is sourced directly from $\texttt{survHE}$). In theory a new
+version of $\texttt{survHE}$ could result in a lack of compatibility
+with this package, therefore, we require the
+$\texttt{survHE}=\text{v}1.1.2$. The same applies albeit to a lesser
+extent with the $\texttt{flexsurv}$ package \[flexsurv\] and we require
+$\texttt{flexsurv}=\text{v}2.0$.
+>>>>>>> 956706852fc857e6c616272ed969b157419c035c
 
 Because the objective of this package was to fit the models with expert
 opinion, plot the survival curves and compare the goodness of fit, these

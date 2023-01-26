@@ -732,10 +732,10 @@ runMLE <- function (x, exArgs){
   }
   else {
  
-   model_mle <- expertsurv::flexsurvreg(formula = formula, data = data, 
+   model_mle <- expertsurv:::flexsurvreg(formula = formula, data = data, 
                                       dist = x, expert_opinion = NULL,method = method_mle)
     
-    model <- expertsurv::flexsurvreg(formula = formula, data = data, 
+    model <- expertsurv:::flexsurvreg(formula = formula, data = data, 
                                    dist = x, expert_opinion = expert_opinion_flex,method = method_mle,inits = model_mle$res[,1])
   }
   toc <- proc.time() - tic
