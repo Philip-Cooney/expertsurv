@@ -94,15 +94,15 @@ bi-modal linear pool) which has a $95\%$ credible interval between
 $9.0−11.9\%$ calculated with the function below:
 
 ![Expert prior
-distributions](plots/Vignette_Example%201%20-%20Expert%20Opinion.png)
+distributions](plots/Vignette_Example_1_Expert_Opinion.png)
 
-    cred_int_val <- cred_int(plot_opinion1,val = "linear pool", interval = c(0.025, 0.975))
+    cred_int_val <- cred_int(plot_opinion1,val = "log pool", interval = c(0.025, 0.975))
 
 We load and fit the data as follows (in this example considering just
-the Weibull and Gompertz models), with pool_type = “log pool” specifying
-that we want to use the logarithmic pooling (rather than default “linear
-pool”). We do this as we wish to compare the results to the penalized
-maximum likelihood estimates in the next section.
+the Weibull and Gompertz models), with `pool_type = "log pool"`
+specifying that we want to use the logarithmic pooling (rather than
+default “linear pool”). We do this as we wish to compare the results to
+the penalized maximum likelihood estimates in the next section.
 
 
     data2 <- survHE::data %>% rename(status = censored) %>% mutate(time2 = ifelse(time > 10, 10, time),
@@ -111,10 +111,10 @@ maximum likelihood estimates in the next section.
     #Set the opinion type to "survival"
 
     example1  <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
-                                            distr=c("wei", "gomp"),
+                                            distr=c("wph", "gomp"),
                                             method="hmc",
                                             iter = 5000,
-                                            pool_type = "linear pool", 
+                                            pool_type = "log pool", 
                                             opinion_type = "survival",
                                             times_expert = timepoint_expert, 
                                             param_expert = param_expert_example1)
@@ -123,7 +123,7 @@ Both visual fit and model fit statistics highlight that the Weibull
 model is a poor fit to both the expert opinion and data (black line
 referring to the $95\%$ confidence region for the experts prior belief).
 
-    survHE::model.fit.plot(example1, type = "dic")
+    model.fit.plot(example1, type = "dic")
 
     #N.B. survHE::plot plots the survival function at the posterior mean parameter values
     #     while it is more robust to use the entire posterior sample (make.surv), however, in this case both results are similar. 
@@ -134,66 +134,34 @@ referring to the $95\%$ confidence region for the experts prior belief).
       scale_y_continuous(expand = c(0, 0), limits = c(0, NA), breaks=seq(0, 1, 0.05))+
       geom_segment(aes(x = 14, y = cred_int_val[1], xend = 14, yend = cred_int_val[2]))
 
-![Model Comparison](plots/Vignette_Example%201%20-%20DIC.png)
+![Model Comparison](plots/Vignette_Example_1_DIC.png)
 
-![Survival function with Expert prior](plots/Vignette_Example%201.png)
+![Survival function with Expert prior](plots/Vignette_Example_1.png)
 
 ## Expert Opinion using Penalized Maximum Likelihood
 
 We can also fit the model by Penalized Maximum Likelihood approaches
-through the $\texttt{flexsurv}$ package (Jackson 2016). Full integration
-of this function with the package is under development and currently is
-only implemented for survival probabilities (not mean survival
-difference).
+through the $\texttt{flexsurv}$ package (Jackson 2016). All that is
+required that the `method="hmc"` is changed to `method="mle"` with the
+`iter` argument now redundant. One argument that maybe of interest is
+the `method_mle` which is the optimization procedure that
+$\texttt{flexsurv}$ uses. In case the optimization fails, we can
+sometimes obtain convergence with the “Nelder-Mead” algorithm. If the
+procedure is still failing, it may relate to the expert opinion being
+too informative.
 
-We require to source the functions in “Flexsurv functions v2.R”
-available in the Github folder. It should be noted that the results will
-be very similar to the Bayesian approach when the expert opinion is
-unimodal (as maximum liklelihood produces a point estimate), therefore
-we use the logarithmic pool which is unimodal. The functions return
-flexsurvreg objects so the regular plot, summary functions work without
-modification. We find that the AIC values also favour the Gompertz model
-by a large factor (not shown).
+It should be noted that the results will be similar to the Bayesian
+approach when the expert opinion is unimodal (as maximum liklelihood
+produces a point estimate) and relatively more informative, therefore we
+use the logarithmic pool which is unimodal.
 
-    #source("~/Flexsurv functions v2.R")
-    expert_opinion<-  list()
+We find that the AIC values also favour the Gompertz model by a large
+factor (not shown) and are very similar to the DIC presented for the
+Bayesian model.
 
-    #Create - the data to add to the flexsurv function
-    expert_opinion$param_expert <- make_data_expert(param_expert_example1, timepoint_expert)
-    expert_opinion$times <- timepoint_expert
-    expert_opinion$pool <- 0 #linear pool is 1; log is 0
-
-    #Only currently implemented for survival probabilities 
-
-    if(expert_opinion$pool == 0){
-      expert_opinion$k_norm <-  get_k_norm(param_expert_example1)
-    }else{
-      expert_opinion$k_norm <-  NULL
-    }
-
-    #Fit the models - returns a flexsurv object so all flexsurv functions work on it.
-    fit_expert_mle_weibull <- try({flexsurvreg(formula = Surv(time2, status2) ~ 1, 
-                                               data = data2, dist="weibullPH",expert_opinion = expert_opinion)},
-                                  silent = TRUE)
-
-    fit_expert_mle_gompertz <- try({flexsurvreg(formula = Surv(time2, status2) ~ 1, 
-                                                data = data2, dist="gompertz",expert_opinion = expert_opinion)},
-                                   silent = TRUE)
-
-    gompertz_summary <- summary(fit_expert_mle_gompertz,t = seq(0,30, by = 0.1))
-
-    ## Plot the outputs
-    png("MLE-Weibull-Gomp.png", width = 600, height = 400)
-    plot(fit_expert_mle_weibull, t = seq(0,30, by = 0.1),xlim= c(0,30),ci = F, xlab = "Time", ylab = "Survival" )
-    lines(x = gompertz_summary[[1]][,"time"], y = gompertz_summary[[1]][,"est"], col = "blue")
-    segments(x0 = timepoint_expert, y0 =  cred_int_val[1], y1 =  cred_int_val[2], col = "orange")
-    legend("topright", legend=c("Weibull", "Gompertz"),
-           col=c("red", "blue"), lty=1:2, cex=0.8,
-           title="Survival analysis with MLE", text.font=4, bg='lightblue')
-    dev.off()
-
-![Survival function with Expert Information-Penalized Maximum
-Likelihood](plots/MLE-Weibull-Gomp.png)
+<!-- ```{r echo = FALSE, fig.cap = "Survival function with Expert Information-Penalized Maximum Likelihood"} -->
+<!-- knitr::include_graphics("plots/MLE-Weibull-Gomp.png") -->
+<!-- ``` -->
 
 After using this function you and wish to use the regular flexsurv
 pacakge you should run the following commands:
@@ -229,14 +197,14 @@ unique(survHE::data$arm)
 
 We can remove the impact of expert opinion by running the same model in
 the $\texttt{survHE}$ package. Alternatively we note that a
-$\mathcal{B}(1,1)$ distribution is uniform on the survival probability
-and does not change the likelihood.
+$\mathcal{Beta}(1,1)$ distribution is uniform on the survival
+probability and does not change the likelihood.
 
     param_expert_vague <- list()
     param_expert_vague[[1]] <- data.frame(dist = "beta", wi = 1, param1 = 1, param2 = 1, param2 = NA)
 
 ![Survival function with Expert prior (left) and Vague prior
-(right)](plots/Vignette_Example%202.png)
+(right)](plots/Vignette_Example_2.png)
 
 The survival function for “arm 1” has been shifted downwards slightly,
 however the covariate for the accelerated time factor has markedly
@@ -246,7 +214,7 @@ increased to counteract the lower survival probability for the reference
 ## Expert Opinion on Survival Difference
 
 This example illustrates an opinion on the survival difference. For
-illustration we use the Gompterz, noting that a negative shape parameter
+illustration we use the Gompertz, noting that a negative shape parameter
 will lead to a proportion of subjects living forever. Clearly the mean
 is not defined in these cases so the code automatically constrains the
 shape to be positive.
@@ -265,16 +233,20 @@ shape to be positive.
                                                          id_trt = 1, # Survival difference is Mean_surv[id_trt]- Mean_surv[id_comp] 
                                                          param_expert = param_expert3)
 
-![Survival difference](plots/Vignette_Example%203.png)
+![Survival difference](plots/Vignette_Example_3.png)
 
-## Compatability with survHE
+## Compatability with survHE and flexsurv
 
 As stated in the introduction this package relies on many of the core
 functions of the $\texttt{survHE}$ package (Baio 2020) (i.e. note the
 use of `survHE::model.fit.plot` in the first example, meaning that the
 function is sourced directly from $\texttt{survHE}$). In theory a new
 version of $\texttt{survHE}$ could result in a lack of compatibility
-with this package, however, any required changes should be minor.
+with this package, therefore, we require the
+$\texttt{survHE}=\text{v}1.1.2$. The same applies albeit to a lesser
+extent with the $\texttt{flexsurv}$ package \[flexsurv\] and we require
+$\texttt{flexsurv}=\text{v}2.0$.
+
 Because the objective of this package was to fit the models with expert
 opinion, plot the survival curves and compare the goodness of fit, these
 capabilities (which have been presented in this README) have been tested
@@ -290,10 +262,17 @@ $\texttt{survHE}$ environment). These should have no impact on the
 operation of $\texttt{survHE}$ and these changes are only invoked when
 $\texttt{expertsurv}$ is loaded. However, in the situation where you
 would like to revert to $\texttt{survHE}$ functions during the session,
-simply run the following:
+simply run the following (with the same required for flexsurv):
 
     unloadNamespace("survHE") #Unload survHE and associated name spaces
     require("survHE") #reload survHE
+
+    unloadNamespace("flexsurv") #Unload flexsurv and associated name spaces
+    require("flexsurv") #reload flexsurv
+
+Care should be taken, however to ensure the packages were successfully
+unloaded as other packages which require $\texttt{flexsurv}$ can block
+the unloading to that package (which will cause an error).
 
 <!-- One practical difference between the packages is the calculation of DIC (Deviance Information Criterion). In  $\texttt{survHE}$ the posterior median is used as the plug-in estimate for the log-likelihood, while we use the posterior mean as per the definition of DIC by [@Spiegelhalter.2003], noting that both estimates should be very similar.  -->
 <!-- ## Survival curves implied by Expert Opinion alone -->
@@ -328,8 +307,8 @@ simply run the following:
 
 As this is a Bayesian analysis convergence diagnostics should be
 performed. Poor convergence can be observed for many reasons, however,
-because of our use of expert opinion my be a symptom of conflict between
-the observed data and the expert’s opinion.
+because of our use of expert opinion it may be a symptom of conflict
+between the observed data and the expert’s opinion.
 
 Default priors should work in most situations, but still need to be
 considered. At a minimum the Bayesian results without expert opinion
