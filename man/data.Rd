@@ -3,7 +3,7 @@
 \docType{data}
 \name{data}
 \alias{data}
-\title{A fictional survival trial.}
+\title{A fictional survival trial taken directly from survHE.}
 \format{
 A data frame with 367 rows and 8 variables:
 \describe{
@@ -29,5 +29,8 @@ data
 A dataset containing fictional data from a trial, where
 the main outcome is in terms of time-to-event and
 censoring indicator and with additional covariates.
+}
+\references{
+\insertRef{Baio.2020}{expertsurv}
 }
 \keyword{datasets}

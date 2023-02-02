@@ -22,7 +22,8 @@
 #' # Runs 'digitise' to create the relevant output files
 #' digitise(surv.inp, nrisk.inp)
 #' }
-#' @export digitise
+#'
+#' @noRd
 digitise <- function(surv_inp,nrisk_inp,km_output="KMdata.txt",ipd_output="IPDdata.txt") {
   # Post-process the data obtained by DigitizeIT to obtain the KM data and the individual level data
   # surv_inp = a txt file obtained by DigitizeIT and containing the input survival times from graph reading
@@ -38,12 +39,12 @@ digitise <- function(surv_inp,nrisk_inp,km_output="KMdata.txt",ipd_output="IPDda
   arm.id<-1         #arm indicator
   
   #Read in survival times read by digizeit
-  digizeit <- read.table(surv_inp,header=TRUE,row.names=NULL)
+  digizeit <- utils::read.table(surv_inp,header=TRUE,row.names=NULL)
   t.S<-digizeit[,2]     # times recorded from DigitizeIT
   S<-digizeit[,3]       # survival from DigitizeIT
   
   #Read in published numbers at risk, n.risk, at time, t.risk, lower and upper indexes for time interval
-  pub.risk<-read.table(nrisk_inp,header=TRUE,row.names=NULL)
+  pub.risk<-utils::read.table(nrisk_inp,header=TRUE,row.names=NULL)
   ## Needs to get rid of possible time intervals with no digitised observations
   pub.risk <- pub.risk[pub.risk[,4]>0,]
   ## Needs to recode the first ever occurrence to 1??
@@ -85,7 +86,7 @@ digitise <- function(surv_inp,nrisk_inp,km_output="KMdata.txt",ipd_output="IPDda
               j*(t.S[lower[(i+1)]]-t.S[lower[i]])/(n.censor[i]+1)
           }
           #Distribute censored observations evenly over time. Find no. censored on each time interval.
-          cen[lower[i]:upper[i]]<-hist(cen.t,breaks=t.S[lower[i]:lower[(i+1)]],plot=F)$counts
+          cen[lower[i]:upper[i]]<-graphics::hist(cen.t,breaks=t.S[lower[i]:lower[(i+1)]],plot=F)$counts
         }
         #Find no. events and no. at risk on each interval to agree with K-M estimates read from curves
         n.hat[lower[i]]<-n.risk[i]
@@ -125,7 +126,7 @@ digitise <- function(surv_inp,nrisk_inp,km_output="KMdata.txt",ipd_output="IPDda
       cen.t[j]<- t.S[lower[n.int]] +
         j*(t.S[upper[n.int]]-t.S[lower[n.int]])/(n.censor[n.int]+1)
     }
-    cen[lower[n.int]:(upper[n.int]-1)]<-hist(cen.t,breaks=t.S[lower[n.int]:upper[n.int]],plot=F)$counts
+    cen[lower[n.int]:(upper[n.int]-1)]<-graphics::hist(cen.t,breaks=t.S[lower[n.int]:upper[n.int]],plot=F)$counts
   }
   #Find no. events and no. at risk on each interval to agree with K-M estimates read from curves
   n.hat[lower[n.int]]<-n.risk[n.int]
@@ -192,7 +193,7 @@ digitise <- function(surv_inp,nrisk_inp,km_output="KMdata.txt",ipd_output="IPDda
   
   # Now writes the results to the output files
   KMdata <- data.frame(time=t.S,n.risk=n.hat[1:n.t],n.event=d,n.censored=cen)
-  write.table(KMdata,km_output,sep="\t",row.names=FALSE,col.names=TRUE)
+  utils::write.table(KMdata,km_output,sep="\t",row.names=FALSE,col.names=TRUE)
   
   # And forms IPD data
   #Initialise vectors
@@ -217,7 +218,7 @@ digitise <- function(surv_inp,nrisk_inp,km_output="KMdata.txt",ipd_output="IPDda
   }
   #Output IPD
   IPD <- data.frame(time=t.IPD,event=event.IPD,arm)
-  write.table(IPD,ipd_output,sep="\t",row.names=FALSE,col.names=TRUE)
+  utils::write.table(IPD,ipd_output,sep="\t",row.names=FALSE,col.names=TRUE)
   
   if (dirname(km_output)==".") {
     cat("\n")

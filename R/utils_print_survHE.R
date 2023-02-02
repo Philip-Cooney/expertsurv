@@ -216,7 +216,7 @@ rescale_stats_hmc_rps <- function(table,x) {
   # If there covariates adds their effects
   if(length(grep("beta",rownames(table)))>0) {
     effects <- matrix(table[grep("beta",rownames(table)),],ncol=4)
-    cn=colnames(model.matrix(x$misc$formula,x$misc$data))
+    cn=colnames(stats::model.matrix(x$misc$formula,x$misc$data))
     rownames(effects) <- cn[-grep("Intercept",cn),drop=FALSE]
   } else {
     effects <- matrix(NA,nrow=0,ncol=4)
@@ -255,180 +255,10 @@ rescale_stats_hmc_pow <- function(table,x) {
   if(all(!is.null(take.out))) {table=table[-take.out,]}
   effects=table[-grep("shape",rownames(table)),]
   rownames(effects) <- unlist(lapply(1:x$misc$data.stan[[1]]$M,function(m) {
-    paste0(colnames(model.matrix(x$misc$formula[[m]],x$misc$data)),"_",m)
+    paste0(colnames(stats::model.matrix(x$misc$formula[[m]],x$misc$data)),"_",m)
   }))
   res <- rbind(table[grep("shape",rownames(table)),],effects)
   if (is.null(dim(res))) {names(res) <- c("mean","se","L95%","U95%")} else {colnames(res) <- c("mean","se","L95%","U95%")}
-  return(res)
-}
-
-#' Helper function to rescale the stats for the Weibull AFT model
-#' 
-#' @param table The table with the relevant values for the model 
-#' parameters
-#' @return \item{res}{The resulting stats}
-#' @author Gianluca Baio
-#' @seealso print.survHE
-#' @references Baio (2020). survHE
-#' @keywords INLA WeibullAFT
-#' @noRd 
-rescale_stats_inla_wei <- function(x,mod,nsim=1000) {
-  # The scale and effects are computed as a *non linear* function of the AFT effects and the shape
-  # But for simplicity can approximate this using 'inla.rmarginal'
-  shape_sim=INLA::inla.rmarginal(nsim,x$models[[mod]]$marginals.hyperpar[[1]])
-  fixeff_sim=lapply(1:nrow(x$models[[mod]]$summary.fixed),function(i) {
-    INLA::inla.rmarginal(nsim,x$models[[mod]]$marginals.fixed[[i]])
-  })
-  shape=shape_sim %>% make_stats %>% matrix(.,ncol=4)
-  ## NB: INLA has a weird parameterisation and with Weibull AFT, the coefficients have the wrong sign
-  scale=exp(-fixeff_sim[[1]]) %>% make_stats%>% matrix(.,ncol=4)
-  rownames(scale) <- "scale"
-  rownames(shape) <- "shape"
-  res=rbind(shape,scale)
-  # If there are covariates then add them too
-  if(length(fixeff_sim)>1) {
-    effects=lapply(2:nrow(x$models[[mod]]$summary.fixed),function(i) {
-      -fixeff_sim[[i]] 
-    })
-    effects=matrix(unlist(lapply(effects,function(i) i %>% make_stats)),
-                   nrow=length(fixeff_sim)-1,ncol=4,byrow=T)
-    rownames(effects) <- x$models[[mod]]$names.fixed[-1]
-    res=rbind(res,effects)
-  }
-  colnames(res)=c("mean","se","L95%","U95%")
-  return(res)
-}
-
-#' Helper function to rescale the stats for the Weibull PH model
-#' 
-#' @param table The table with the relevant values for the model 
-#' parameters
-#' @return \item{res}{The resulting stats}
-#' @author Gianluca Baio
-#' @seealso print.survHE
-#' @references Baio (2020). survHE
-#' @keywords INLA WeibullPH
-#' @noRd 
-rescale_stats_inla_wph <- function(x,mod,nsim=1000) {
-  # The scale and effects are computed as a *non linear* function of the AFT effects and the shape
-  # But for simplicity can approximate this using 'inla.rmarginal'
-  shape_sim=INLA::inla.rmarginal(nsim,x$models[[mod]]$marginals.hyperpar[[1]])
-  fixeff_sim=lapply(1:nrow(x$models[[mod]]$summary.fixed),function(i) {
-    INLA::inla.rmarginal(nsim,x$models[[mod]]$marginals.fixed[[i]])
-  })
-  shape=shape_sim %>% make_stats %>% matrix(.,ncol=4)
-  scale=exp(fixeff_sim[[1]]) %>% make_stats%>% matrix(.,ncol=4)
-  rownames(scale) <- "scale"
-  rownames(shape) <- "shape"
-  res=rbind(shape,scale)
-  # If there are covariates then add them too
-  if(length(fixeff_sim)>1) {
-    effects=lapply(2:nrow(x$models[[mod]]$summary.fixed),function(i) {
-      fixeff_sim[[i]]
-    })
-    effects=matrix(unlist(lapply(effects,function(i) i %>% make_stats)),
-                   nrow=length(fixeff_sim)-1,ncol=4,byrow=T)
-    rownames(effects) <- x$models[[mod]]$names.fixed[-1]
-    res=rbind(res,effects)
-  }
-  colnames(res)=c("mean","se","L95%","U95%")
-  return(res)
-}
-
-#' Helper function to rescale the stats for the Exponential model
-#' 
-#' @param table The table with the relevant values for the model 
-#' parameters
-#' @return \item{res}{The resulting stats}
-#' @author Gianluca Baio
-#' @seealso print.survHE
-#' @references Baio (2020). survHE
-#' @keywords INLA Exponential
-#' @noRd 
-rescale_stats_inla_exp <- function(x,mod,nsim=1000) {
-  fixeff_sim=lapply(1:nrow(x$models[[mod]]$summary.fixed),function(i) {
-    INLA::inla.rmarginal(nsim,x$models[[mod]]$marginals.fixed[[i]])
-  })
-  rate=exp(fixeff_sim[[1]]) %>% make_stats %>% matrix(.,ncol=4)
-  rownames(rate)="rate"
-  res=rate
-  if(length(fixeff_sim)>1) {
-    effects=lapply(2:nrow(x$models[[mod]]$summary.fixed),function(i) {
-      fixeff_sim[[i]]
-    })
-    effects=matrix(unlist(lapply(effects,function(i) i %>% make_stats)),
-                   nrow=length(fixeff_sim)-1,ncol=4,byrow=T)
-    rownames(effects) <- x$models[[mod]]$names.fixed[-1]
-    res=rbind(res,effects)
-  }
-  colnames(res)=c("mean","se","L95%","U95%")
-  return(res)
-}
-
-#' Helper function to rescale the stats for the logNormal model
-#' 
-#' @param table The table with the relevant values for the model 
-#' parameters
-#' @return \item{res}{The resulting stats}
-#' @author Gianluca Baio
-#' @seealso print.survHE
-#' @references Baio (2020). survHE
-#' @keywords INLA logNormal
-#' @noRd 
-rescale_stats_inla_lno <- function(x,mod,nsim=1000) {
-  prec_sim=INLA::inla.rmarginal(nsim,x$models[[mod]]$marginals.hyperpar[[1]])
-  fixeff_sim=lapply(1:nrow(x$models[[mod]]$summary.fixed),function(i) {
-    INLA::inla.rmarginal(nsim,x$models[[mod]]$marginals.fixed[[i]])
-  })
-  meanlog=fixeff_sim[[1]] %>% make_stats %>% matrix(.,ncol=4)
-  sdlog=sqrt(1/prec_sim) %>% make_stats %>% matrix(.,ncol=4)
-  rownames(meanlog)="meanlog"
-  rownames(sdlog)="sdlog"
-  res=rbind(meanlog,sdlog)
-  if(length(fixeff_sim)>1) {
-    effects=lapply(2:nrow(x$models[[mod]]$summary.fixed),function(i) {
-      fixeff_sim[[i]]
-    })
-    effects=matrix(unlist(lapply(effects,function(i) i %>% make_stats)),
-                   nrow=length(fixeff_sim)-1,ncol=4,byrow=T)
-    rownames(effects) <- x$models[[mod]]$names.fixed[-1]
-    res=rbind(res,effects)
-  }
-  colnames(res)=c("mean","se","L95%","U95%")
-  return(res)
-}
-
-#' Helper function to rescale the stats for the logLogistic model
-#' 
-#' @param table The table with the relevant values for the model 
-#' parameters
-#' @return \item{res}{The resulting stats}
-#' @author Gianluca Baio
-#' @seealso print.survHE
-#' @references Baio (2020). survHE
-#' @keywords INLA logLogistic
-#' @noRd 
-rescale_stats_inla_llo <- function(x,mod,nsim=1000) {
-  # Uses 'variant=1' in INLA
-  shape_sim=INLA::inla.rmarginal(nsim,x$models[[mod]]$marginals.hyperpar[[1]])
-  fixeff_sim=lapply(1:nrow(x$models[[mod]]$summary.fixed),function(i) {
-    INLA::inla.rmarginal(nsim,x$models[[mod]]$marginals.fixed[[i]])
-  })
-  shape=shape_sim %>% make_stats %>% matrix(.,ncol=4)
-  scale=exp(-fixeff_sim[[1]]) %>% make_stats %>% matrix(.,ncol=4)
-  rownames(shape)="shape"
-  rownames(scale)="scale"
-  res=rbind(shape,scale)
-  if(length(fixeff_sim)>1) {
-    effects=lapply(2:nrow(x$models[[mod]]$summary.fixed),function(i) {
-      -fixeff_sim[[i]]
-    })
-    effects=matrix(unlist(lapply(effects,function(i) i %>% make_stats)),
-                   nrow=length(fixeff_sim)-1,ncol=4,byrow=T)
-    rownames(effects) <- x$models[[mod]]$names.fixed[-1]
-    res=rbind(res,effects)
-  }
-  colnames(res)=c("mean","se","L95%","U95%")
   return(res)
 }
 
@@ -442,7 +272,7 @@ rescale_stats_inla_llo <- function(x,mod,nsim=1000) {
 #' @keywords Summaries Print
 #' @noRd 
 make_stats <- function(x) {
-  tab=c(mean(x), sd(x), quantile(x, 0.025), quantile(x,0.975))
+  tab=c(mean(x), stats::sd(x), stats::quantile(x, 0.025), stats::quantile(x,0.975))
   return(tab)
 }
 
@@ -477,7 +307,7 @@ add_effects_hmc <- function(table,x) {
   # If there's more than one beta, then there are "effects" (otherwise it's only intercept)
   if(length(grep("beta",rownames(table)))>1) {
     effects <- matrix(table[grep("beta",rownames(table)),],ncol=4)
-    rownames(effects) <- colnames(model.matrix(x$misc$formula,x$misc$data))
+    rownames(effects) <- colnames(stats::model.matrix(x$misc$formula,x$misc$data))
     # Now removes the line with the intercept (which is already rescaled to the shape/rate/mean parameter)
     effects=effects[-grep("Intercept",rownames(effects)),,drop=FALSE]
   } else {
@@ -500,19 +330,7 @@ original_table_mle <- function(x,mod,digits) {
   print(x$models[[mod]],digits=digits)
 }
 
-#' Helper function to create the original summary table
-#' 
-#' @param x The 'survHE' model
-#' @param mod Which of the models to be used
-#' @param digits The number of digits to print
-#' @author Gianluca Baio
-#' @seealso print.survHE
-#' @references Baio (2020). survHE
-#' @keywords INLA
-#' @noRd 
-original_table_inla <- function(x,mod,digits) {
-  print(summary(x$models[[mod]]),digits=digits)
-}
+
 
 #' Helper function to create the original summary table
 #' 

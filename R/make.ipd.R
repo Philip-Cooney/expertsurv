@@ -26,7 +26,7 @@
 #' # Now uses 'make.ipd' to create the pseudo-data
 #' make.ipd("IPD.txt", ctr = 1, var.labs = c("time", "event", "arm"))
 #' }
-#' @export make.ipd
+#' @noRd
 make.ipd <- function(ipd_files,ctr=1,var.labs=c("time","event","arm")) {
   ## Piles in the simulated IPD resulting from running digitise for more than one treatment arm  
   ## ipd_files = a list including the names of the IPD files created as output of digitise
@@ -40,11 +40,11 @@ make.ipd <- function(ipd_files,ctr=1,var.labs=c("time","event","arm")) {
   n_arms <- length(ipd_files)
   index <- 1:n_arms
   active <- index[-ctr]
-  data <- read.table(ipd_files[[ctr]],header=TRUE,row.names=NULL)
+  data <- utils::read.table(ipd_files[[ctr]],header=TRUE,row.names=NULL)
   data[,"arm"] <- 0 # sets the value of "arm" to 0, for the control group
   arm.ind <- 1
   for (i in active) {
-    tmp <- read.table(ipd_files[[index[i]]],header=TRUE,row.names=NULL)
+    tmp <- utils::read.table(ipd_files[[index[i]]],header=TRUE,row.names=NULL)
     tmp[,"arm"] <- arm.ind
     data <- rbind(data,tmp)
     arm.ind <- arm.ind+1

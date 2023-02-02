@@ -19,7 +19,18 @@ Plots a summary of the model fit for all the models fitted.
 }
 \examples{
 \dontrun{ 
-data2 <- survHE::data \%>\% rename(status = censored) \%>\% mutate(time2 = ifelse(time > 10, 10, time),
+require("dplyr")
+param_expert_example1 <- list()
+param_expert_example1[[1]] <- data.frame(dist = c("norm"),
+                                         wi = c(1), # Ensure Weights sum to 1
+                                         param1 = c(0.1),
+                                         param2 = c(0.005),
+                                         param3 = c(NA))
+timepoint_expert <- 14 # Expert opinion at t = 14
+
+
+data2 <- expertsurv::data \%>\% rename(status = censored) \%>\% 
+mutate(time2 = ifelse(time > 10, 10, time),
 status2 = ifelse(time> 10, 0, status))
 example1  <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
                               distr=c("wei", "gomp"),
@@ -30,7 +41,7 @@ example1  <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
                               param_expert = param_expert_example1)
 
 
-model.fit.plot(example1, type = "dic")
+model.fit.plot(example1, type = "aic")
 
 }
 

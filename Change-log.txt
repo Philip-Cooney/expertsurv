@@ -6,3 +6,40 @@ Implement logarithmic pooling in the model (was given as an option but not imple
 Modified the model.fit.plot from survHE to allow for plotting pml, waic etc.
 Changed example to highlight the weights need to sum up to 1.
 Tidied up the folder structure and removed uneeded files.
+
+#Notes to self
+
+To add something to the build ignore use this code usethis::use_build_ignore(c("man-roxygen"))
+if the stan files cause an error on recompilation, delete all the src files, the config files and run rstantools::use_stan()
+
+To stop the issue with big pdfs you have to isnstall qpdf and then set the path variable
+
+old_path <- Sys.getenv("PATH")
+Sys.setenv(PATH = paste( "C:\\Program Files\\qpdf 11.2.0\\bin",old_path, sep = ";"))
+Sys.getenv()
+
+
+The NAMESPACE and DESCRIPTION topic
+https://stat.ethz.ch/pipermail/r-help/2013-October/361984.html
+
+
+Check location of files
+
+pathway <- "C:/Users/phili/OneDrive/PhD/R_packages/expertsurv/"
+myfiles <- list.files(paste0(pathway, "R"), full.names = TRUE)
+check_text <- c("scales")
+Filter(function(file) any(grepl(paste0(check_text, collapse = "|"), readLines(file, warn = FALSE))),
+       myfiles)
+
+#Submit to CRAN
+Create Tarball
+devtools::build() #Will create the tarball
+R --vanilla CMD check C:/Users/phili/OneDrive/PhD/R_packages/expertsurv_1.0.0.tar.gz
+
+
+
+#Future Updates
+Need to update the ``expert_pooling`` function`to allow for integration with the SHINY app.
+Need to remove attach
+
+C:\Users\phili\OneDrive\PhD\R packages\expertsurv - Backup - December 2022.zip\expertsurv - Backup - December 2022\Archive

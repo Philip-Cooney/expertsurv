@@ -21,7 +21,7 @@ fit.models.expert(
 
 \item{distr}{As per \code{fit.models} in \code{survHE}. Note Generalized F model is not available for method = "hmc" nor Royston-Parmar available with opinion on the mean survival.}
 
-\item{method}{As per \code{fit.models} in \code{survHE}. Expert Opinion is not implemented for the inla method.}
+\item{method}{As per \code{fit.models} in \code{survHE}. (except for the inla method). It should be noted that a few of the models are fit using JAGS, however, for consistency we still use "hmc".}
 
 \item{expert_type}{Either "survival", which indicates expert opinion on the survival function or "mean" (actually anything that does not contain "survival") which represents a belief on difference in survival.}
 
@@ -37,16 +37,17 @@ fit.models.expert(
 \item{...}{Other arguments may be required depending on the example. See \href{https://github.com/Philip-Cooney/expertsurv/blob/master/README.md}{README} for details.}
 }
 \value{
-
+An object of class \code{expertsurv} which contains the parameters of the models estimated with expert opinion.
 }
 \description{
 Implementation of survival models with expert opinion on the survival probabilities or expected difference in survival.
-Function is equivalent to the \code{fit.models} in \code{survHE} expect for the inclusion of the "expert_type" and "param_expert" arguments.
+Function is equivalent to the \code{fit.models} in \code{survHE} except for the inclusion of the "expert_type" and "param_expert" arguments.
 Worked examples can be found in the \href{https://github.com/Philip-Cooney/expertsurv/blob/master/README.md}{README} file.
-Note that the default method is "hmc", however, the user may use "mle"  (or "inla" for analysis without expert opinion).
+Note that the default method is "hmc", however, the user may use "mle"  (method "inla" is not included).
 }
 \examples{
 \dontrun{
+require("dplyr")
 #Expert Opinion as a normal distribution centered on 0.1 with sd 0.005
 param_expert_example1 <- list()
 param_expert_example1[[1]] <- data.frame(dist = c("norm"),
@@ -72,3 +73,4 @@ model.fit.plot(example1, type = "aic")  #Plot AIC
 
                               
 }
+\keyword{models}

@@ -7,7 +7,7 @@
 \method{print}{expertsurv}(x, mod = 1, ...)
 }
 \arguments{
-\item{x}{the \code{survHE} object (the output of the call to
+\item{x}{the \code{expertsurv} object (the output of the call to
 \code{fit.models})}
 
 \item{mod}{is the index of the model. Default value is 1, but the user can
@@ -17,23 +17,27 @@ argument for distr (so many models are fitted & stored in the same object)}
 \item{\dots}{additional options, including: \code{digits} = number of
 significant digits to be shown in the summary table (default = 6)
 \code{original} = a flag to say whether the \emph{original} table
-from either \code{flexsurv} or \code{INLA} or \code{rstan} should be printed}
+from either \code{flexsurv} or \code{rstan/JAGS} should be printed}
 }
 \description{
 Prints the summary table for the model(s) fitted, with the estimate of the
-parameters
+parameters - ported from \code{survHE}.
 }
 \examples{
 \dontrun{ 
-data(bc)
 
-mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-    distr="exp",method="mle")
+mle = example1 <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
+                   distr=c("wph", "gomp"),
+                   method="mle",
+                   pool_type = "log pool",
+                   opinion_type = "survival",
+                   times_expert = timepoint_expert,
+                   param_expert = param_expert_example1)
 print(mle)
 }
 }
 \references{
-P Cooney (2023). expertsurv: Incorporating expert opinion into parametric survival models
+\insertRef{Baio.2020}{expertsurv}
 }
 \author{
 Gianluca Baio

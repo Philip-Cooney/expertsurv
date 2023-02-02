@@ -24,7 +24,7 @@ plot_expert_opinion(
 \item{St_indic}{Set to 1 if you want to truncate the distributions to be between 0 and 1.}
 }
 \value{
-
+A ggplot with pooled distributions.
 }
 \description{
 Returns a ggplot with the individual expert opinions along with the pooled distributions (both linear and logarithmic).

@@ -1,7 +1,8 @@
 #' Prints a summary table for the distribution the mean survival time for a
 #' given model and data
 #' 
-#' Calculates the mean survival time as the area under the survival curve
+#' Calculates the mean survival time as the area under the survival curve -
+#' ported from ``survHE``
 #' 
 #' A list comprising of the following elements
 #' 
@@ -19,16 +20,9 @@
 #' survival times } \item{tab}{ A summary table }
 #' @author Gianluca Baio
 #' @seealso \code{fit.models}, \code{make.surv}
-#' @template refs
 #' @keywords Parametric survival models Mean survival time
-#' @examples
-#' \dontrun{
-#' data(bc)
-#' 
-#' mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-#'     distr="exp",method="mle")
-#' summary(mle,nsim=100)
-#' }
+#' @references 
+#' \insertRef{Baio.2020}{expertsurv}
 #' @exportS3Method summary
 #' @export summary.expertsurv
 summary.expertsurv <- function(object,mod=1,t=NULL,nsim=1000,...) {
@@ -57,7 +51,7 @@ summary.expertsurv <- function(object,mod=1,t=NULL,nsim=1000,...) {
   # Defines the utility function to compute the stats table
   make.stats <- function(x, dim = 2) {
     bugs.stats <- function(x) {
-      c(mean(x), sd(x), quantile(x, 0.025), median(x), quantile(x, 0.975))
+      c(mean(x), stats::sd(x), stats::quantile(x, 0.025), stats::median(x), stats::quantile(x, 0.975))
     }
     if (is.null(dim(x)) == TRUE) {
       tab <- bugs.stats(x)
@@ -95,7 +89,7 @@ summary.expertsurv <- function(object,mod=1,t=NULL,nsim=1000,...) {
       lapply(1:psa$nsim,function(j) {
         xvar=i$t
         yvar=i[,(j+1)]
-        sum(diff(xvar) * (head(yvar,-1)+tail(yvar,-1)), na.rm=T)/2
+        sum(diff(xvar) * (utils::head(yvar,-1)+utils::tail(yvar,-1)), na.rm=T)/2
       })
     })
   ),nrow=psa$nsim,byrow=F)

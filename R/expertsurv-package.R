@@ -1,37 +1,66 @@
 
 
 
-#' Survival Analysis in Health Economic Evaluation
+#' Incorporating Expert Opinion with Parametric Survival Models
 #' 
-#' Contains a suite of functions to perform survival analysis with the aim of
-#' aiding in health economic modelling (extrapolation, model checking and PSA)
+#' Contains functions to include expert opinion with the parametric models commonly 
+#' used in health economic modelling. Theoretical details are described elsewhere \insertCite{Cooney.2023}{expertsurv}.  Borrows many function from the ``survHE`` package \insertCite{Baio.2020}{expertsurv}. 
 #' 
-#' \tabular{ll}{ Package: \tab survHE\cr Type: \tab Package\cr Version: \tab
-#' 1.1.2\cr Date: \tab 2023-01-27\cr License: \tab GPL2 \cr LazyLoad: \tab
-#' yes\cr } Contains a suite of functions to perform survival analysis with the
-#' aim of aiding in health economic modelling (extrapolation, model checking
-#' and PSA)
+#' \tabular{ll}{ Package: \tab expertsurv \cr Type: \tab Package\cr Version: \tab
+#' 1.0.0\cr Date: \tab 2023-01-27\cr License: \tab GPL2 \cr LazyLoad: \tab
+#' yes\cr } Integrate expert opinions on survival and mean differences in survival with common parametric survival models using either a Bayesian or frequentist framework.
 #' 
 #' @name expertsurv-package
+#' 
 #' @aliases expertsurv-package expertsurv
 #' @docType package
-#' @author Philip Cooney
-#' 
-#' Maintainer: Philip Cooney
+#' @author 
+#' Philip Cooney Package Creator, Maintainer
+#' @author 
+#' Arthur White  Thesis Supervisor
 #' @template refs
-#' @keywords Survival Modelling Health Economic Evaluation
+#' @keywords Expert Opinion Survival Modelling Health Economic Evaluation
 #' @examples
 #' \dontrun{ 
-#' # Loads some survival data
-#' data(bc)
-#' # Fits a parametric model
-#' m <- fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-#'     distr="exp",method="mle")
-#' # Print output in tabular format
-#' print(m)
-#' # Visualise output in terms of survival curves
-#' plot(m)
+#' #Define expert opinion
+#' require("dplyr")
+#' param_expert_example1 <- list()
+#' #1 timepoint and 2 experts with equal weight,
+#' #first a normal distribution, second a non-standard t-distribution with
+#' #3 degrees of freedom
+#' 
+#' param_expert_example1[[1]] <- data.frame(dist = c("norm","t"),
+#'                                wi = c(0.5,0.5), # Ensure Weights sum to 1
+#'                                param1 = c(0.1,0.12),
+#'                                param2 = c(0.005,0.005),
+#'                                 param3 = c(NA,3))
+#' 
+#' 
+#' timepoint_expert <- 14
+#' 
+#' data2 <- data %>% rename(status = censored) %>% mutate(time2 = ifelse(time > 10, 10, time),
+#'                   status2 = ifelse(time> 10, 0, status))
+#'
+#' example1  <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
+#'                               distr=c("wph", "gomp"),
+#'                               method="mle",
+#'                               pool_type = "log pool", 
+#'                               opinion_type = "survival",
+#'                               times_expert = timepoint_expert, 
+#'                               param_expert = param_expert_example1)
+#' 
+#'  #Visualize the goodness of fit
+#'  model.fit.plot(example1, type = "aic")
+#'  #Visualize the survival curve
+#'  plot(example1, add.km = T, t = 0:30)
+#' 
 #' }
+#' 
+#' @references 
+#' \insertRef{Baio.2020}{expertsurv}
+#' 
+#' \insertRef{Cooney.2023}{expertsurv}
+#' 
 NULL
 
 

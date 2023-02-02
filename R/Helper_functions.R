@@ -2,36 +2,56 @@
 `%!in%` = Negate(`%in%`)
 
 gamma.error_mod <- function (parameters, values, probabilities, weights, mode){
-  sum(weights * (pgamma(values, exp(parameters[1]), exp(parameters[2])) - 
-                   probabilities)^2) + 
-    ((exp(parameters[1])-1)/exp(parameters[2]) -mode)^2 #Mode
+  res1 <-  sum(weights * (stats::pgamma(values, exp(parameters[1]), exp(parameters[2])) - 
+                   probabilities)^2) 
+  
+  if(!is.null(model)){
+    res1 <- res1 + ((exp(parameters[1])-1)/exp(parameters[2]) -mode)^2 #Mode
+  }
+  return(res1)
+
 }
 
 beta.error_mod <- function (parameters, values, probabilities, weights, mode) 
 {
-  sum(weights * (pbeta(values, exp(parameters[1]), exp(parameters[2])) - 
-                   probabilities)^2) +
-    ((exp(parameters[1])-1)/(exp(parameters[1])+exp(parameters[2])-2) -mode)^2 
+  res1 <-  sum(weights * (stats::pbeta(values, exp(parameters[1]), exp(parameters[2])) - 
+                   probabilities)^2) 
+  
+  if(!is.null(model)){
+    res1 <- res1 +  ((exp(parameters[1])-1)/(exp(parameters[1])+exp(parameters[2])-2) -mode)^2 
+  }
+  return(res1)
+ 
 }
 
 normal.error_mod <- function (parameters, values, probabilities, weights, mode){
-  sum(weights * (pnorm(values, parameters[1], exp(parameters[2])) - 
-                   probabilities)^2)+
-    (parameters[1] -mode)^2
+  res1 <-  sum(weights * (pnorm(values, parameters[1], exp(parameters[2])) - 
+                   probabilities)^2)
+  if(!is.null(model)){
+    res1 <- res1 + (parameters[1] -mode)^2
+  }
+  return(res1)
+  
 }
 
 
 t.error_mod <- function (parameters, values, probabilities, weights, degreesfreedom, mode){
-  sum(weights * (pt((values - parameters[1])/exp(parameters[2]), 
-                    degreesfreedom) - probabilities)^2)+
-    (parameters[1] -mode)^2
+  res1 <- sum(weights * (stats::pt((values - parameters[1])/exp(parameters[2]), 
+                    degreesfreedom) - probabilities)^2)
+  
+  if(!is.null(model)){
+    res1 <- res1 + (parameters[1] -mode)^2
+  }
+  
 }
 
 
 lognormal.error_mod <- function (parameters, values, probabilities, weights, mode){
-  sum(weights * (plnorm(values, parameters[1], exp(parameters[2])) - 
-                   probabilities)^2)+
-    (exp(parameters[1]-exp(parameters[2])^2) -mode)^2
+  res1 <-sum(weights * (stats::plnorm(values, parameters[1], exp(parameters[2])) - 
+                   probabilities)^2)
+  if(!is.null(model)){
+    res1 <- res1 +  (exp(parameters[1]-exp(parameters[2])^2) -mode)^2
+  }
 }
 
 dt.scaled <- function (x, df, mean = 0, sd = 1, ncp, log = FALSE){
@@ -58,8 +78,8 @@ expert_log_dens <- function(x, df, pool_type, k_norm = NULL, St_indic){
   for(i in 1:nrow(df)){
     
     if(df[i,1] == 1){ # 1 equal normal
-      like[i] <- dnorm(x, df[i,3], df[i,4], log = F) 
-      k_trunc <- pnorm(b,df[i,3], df[i,4])-pnorm(a,df[i,3], df[i,4])
+      like[i] <- stats::dnorm(x, df[i,3], df[i,4], log = F) 
+      k_trunc <- stats::pnorm(b,df[i,3], df[i,4])-stats::pnorm(a,df[i,3], df[i,4])
     }
     
     
@@ -70,21 +90,21 @@ expert_log_dens <- function(x, df, pool_type, k_norm = NULL, St_indic){
     }
     
     if(df[i,1] == 3){ # 3 equal gamma
-      like[i] <- dgamma(x, df[i,3], df[i,4],  log = F)   
-      k_trunc <- pgamma(b,  df[i,3], df[i,4])-pgamma(a,  df[i,3], df[i,4])
+      like[i] <- stats::dgamma(x, df[i,3], df[i,4],  log = F)   
+      k_trunc <- stats::pgamma(b,  df[i,3], df[i,4])-stats::pgamma(a,  df[i,3], df[i,4])
       
     }
     
     if(df[i,1] == 4){ # 4 equal lnorm
-        like[i] <- dlnorm(x,  df[i,3], df[i,4],log = F)  
-       k_trunc <- plnorm(b,  df[i,3], df[i,4])-plnorm(a,  df[i,3], df[i,4])
+        like[i] <- stats::dlnorm(x,  df[i,3], df[i,4],log = F)  
+       k_trunc <- stats::plnorm(b,  df[i,3], df[i,4])-stats::plnorm(a,  df[i,3], df[i,4])
       
     }
     
     
     if(df[i,1] == 5){# 5 = beta
-        like[i] <- dbeta(x,  df[i,3], df[i,4],   log = F)
-        k_trunc <- pbeta(b,  df[i,3], df[i,4])-pbeta(a,  df[i,3], df[i,4])
+        like[i] <- stats::dbeta(x,  df[i,3], df[i,4],   log = F)
+        k_trunc <- stats::pbeta(b,  df[i,3], df[i,4])-stats::pbeta(a,  df[i,3], df[i,4])
       
     }
     
@@ -186,20 +206,20 @@ fitdist_mod <- function (vals, probs, lower = -Inf, upper = Inf, weights = 1,
     maxprob <- max(probs[inc, i])
     minvals <- min(vals[inc, i])
     maxvals <- max(vals[inc, i])
-    q.fit <- approx(x = probs[inc, i], y = vals[inc, i], 
+    q.fit <- stats::approx(x = probs[inc, i], y = vals[inc, i], 
                     xout = c(0.4, 0.5, 0.6))$y
     l <- q.fit[1]
     u <- q.fit[3]
-    minq <- qnorm(minprob)
-    maxq <- qnorm(maxprob)
+    minq <- stats::qnorm(minprob)
+    maxq <- stats::qnorm(maxprob)
     m <- (minvals * maxq - maxvals * minq)/(maxq - minq)
     v <- ((maxvals - minvals)/(maxq - minq))^2
-    normal.fit <- optim(c(m, 0.5 * log(v)), normal.error_mod, 
+    normal.fit <- stats::optim(c(m, 0.5 * log(v)), normal.error_mod, 
                         values = vals[inc, i], probabilities = probs[inc, 
                                                                      i], weights = weights[inc, i], mode = mode[i])
     normal.parameters[i, ] <- c(normal.fit$par[1], exp(normal.fit$par[2]))
     ssq[i, "normal"] <- normal.fit$value
-    t.fit <- optim(c(m, 0.5 * log(v)), t.error_mod, values = vals[inc,i], 
+    t.fit <- stats::optim(c(m, 0.5 * log(v)), t.error_mod, values = vals[inc,i], 
                    probabilities = probs[inc, i], weights = weights[inc,i], degreesfreedom = tdf[i], mode = mode[i])
     t.parameters[i, 1:2] <- c(t.fit$par[1], exp(t.fit$par[2]))
     t.parameters[i, 3] <- tdf[i]
@@ -208,7 +228,7 @@ fitdist_mod <- function (vals, probs, lower = -Inf, upper = Inf, weights = 1,
       vals.scaled1 <- vals[inc, i] - lower[i]
       
       m.scaled1 <- m - lower[i]
-      gamma.fit <- optim(c(log(m.scaled1^2/v), log(m.scaled1/v)), 
+      gamma.fit <- stats::optim(c(log(m.scaled1^2/v), log(m.scaled1/v)), 
                          gamma.error_mod, values = vals.scaled1, probabilities = probs[inc, 
                                                                                    i], weights = weights[inc, i], mode = mode[i])
       gamma.parameters[i, ] <- exp(gamma.fit$par)
@@ -216,13 +236,13 @@ fitdist_mod <- function (vals, probs, lower = -Inf, upper = Inf, weights = 1,
       std <- ((log(u - lower[i]) - log(l - lower[i]))/1.35)
       mlog <- (log(minvals - lower[i]) * maxq - log(maxvals - 
                                                       lower[i]) * minq)/(maxq - minq)
-      lognormal.fit <- optim(c(mlog, log(std)), lognormal.error_mod, 
+      lognormal.fit <- stats::optim(c(mlog, log(std)), lognormal.error_mod, 
                              values = vals.scaled1, probabilities = probs[inc, 
                                                                           i], weights = weights[inc, i], mode = mode[i])
       lognormal.parameters[i, 1:2] <- c(lognormal.fit$par[1], 
                                         exp(lognormal.fit$par[2]))
       ssq[i, "lognormal"] <- lognormal.fit$value
-      logt.fit <- optim(c(log(m.scaled1), log(std)), SHELF:::logt.error, 
+      logt.fit <- stats::optim(c(log(m.scaled1), log(std)), SHELF:::logt.error, 
                         values = vals.scaled1, probabilities = probs[inc, 
                                                                      i], weights = weights[inc, i], degreesfreedom = tdf[i])
       logt.parameters[i, 1:2] <- c(logt.fit$par[1], exp(logt.fit$par[2]))
@@ -237,11 +257,10 @@ fitdist_mod <- function (vals, probs, lower = -Inf, upper = Inf, weights = 1,
       alp <- abs(m.scaled2^3/v.scaled2 * (1/m.scaled2 - 
                                             1) - m.scaled2)
       bet <- abs(alp/m.scaled2 - alp)
-      if (identical(probs[inc, i], (vals[inc, i] - lower[i])/(upper[i] - 
-                                                              lower[i]))) {
+      if (identical(probs[inc, i], (vals[inc, i] - lower[i])/(upper[i] - lower[i]))) {
         alp <- bet <- 1
       }
-      beta.fit <- optim(c(log(alp), log(bet)), beta.error_mod, 
+      beta.fit <- stats::optim(c(log(alp), log(bet)), beta.error_mod, 
                         values = vals.scaled2, probabilities = probs[inc, 
                                                                      i], weights = weights[inc, i], mode = mode[i])
       beta.parameters[i, ] <- exp(beta.fit$par)
@@ -251,7 +270,7 @@ fitdist_mod <- function (vals, probs, lower = -Inf, upper = Inf, weights = 1,
       valsMirrored <- upper[i] - vals[inc, i]
       probsMirrored <- 1 - probs[inc, i]
       mMirrored <- upper[i] - m
-      mirrorgamma.fit <- optim(c(log(mMirrored^2/v), log(mMirrored/v)), 
+      mirrorgamma.fit <- stats::optim(c(log(mMirrored^2/v), log(mMirrored/v)), 
                                SHELF:::gamma.error, values = valsMirrored, probabilities = probsMirrored, 
                                weights = weights[inc, i])
       mirrorgamma.parameters[i, ] <- exp(mirrorgamma.fit$par)
@@ -267,7 +286,7 @@ fitdist_mod <- function (vals, probs, lower = -Inf, upper = Inf, weights = 1,
       mirrorlognormal.parameters[i, 1:2] <- c(mirrorlognormal.fit$par[1], 
                                               exp(mirrorlognormal.fit$par[2]))
       ssq[i, "mirrorlognormal"] <- mirrorlognormal.fit$value
-      mirrorlogt.fit <- optim(c(log(mMirrored), log(stdMirror)), 
+      mirrorlogt.fit <- stats::optim(c(log(mMirrored), log(stdMirror)), 
                               SHELF:::logt.error, values = valsMirrored, probabilities = probsMirrored, 
                               weights = weights[inc, i], degreesfreedom = tdf[i])
       mirrorlogt.parameters[i, 1:2] <- c(mirrorlogt.fit$par[1], 
@@ -356,8 +375,8 @@ plotfit <- function (fit, d = "best", xl = -Inf, xu = Inf, ql = NA, qu = NA,
   if (is.na(qu) == F & (qu < 0 | qu > 1)) {
     stop("Upper feedback quantile must be between 0 and 1")
   }
-  theme_set(theme_grey(base_size = fs))
-  theme_update(plot.title = element_text(hjust = 0.5))
+  ggplot2::theme_set(ggplot2::theme_grey(base_size = fs))
+  ggplot2::theme_update(plot.title = ggplot2::element_text(hjust = 0.5))
   if (nrow(fit$vals) > 1 & is.na(ex) == T & lp == F) {
     if (xl == -Inf & min(fit$limits[, 1]) > -Inf) {
       xl <- min(fit$limits[, 1])
@@ -377,14 +396,14 @@ plotfit <- function (fit, d = "best", xl = -Inf, xu = Inf, ql = NA, qu = NA,
       xl <- min(fit$limits[, 1])
     }
     if (xl == -Inf & min(fit$limits[, 1]) == -Inf) {
-      f1 <- feedback(fit, quantiles = 0.01, dist = d)
+      f1 <- SHELF::feedback(fit, quantiles = 0.01, dist = d)
       xl <- min(f1$expert.quantiles)
     }
     if (xu == Inf & max(fit$limits[, 2]) < Inf) {
       xu <- max(fit$limits[, 2])
     }
     if (xu == Inf & max(fit$limits[, 2]) == Inf) {
-      f2 <- feedback(fit, quantiles = 0.99, dist = d)
+      f2 <- SHELF::feedback(fit, quantiles = 0.99, dist = d)
       xu <- max(f2$expert.quantiles)
     }
     p1 <- SHELF:::makeLinearPoolPlot(fit, xl, xu, d, lpw, lwd, xlab, 
@@ -475,7 +494,7 @@ ssq_mix <- function(object, values, probs){
   df_ssq <- data.frame(pi = object$pi, mu = object$mu, sd = object$sd)
   
   #Evaluate the pnorm individually
-  pnorm_eval  <- apply(df_ssq,1, FUN = function(x){pnorm(values,x["mu"],
+  pnorm_eval  <- apply(df_ssq,1, FUN = function(x){stats::pnorm(values,x["mu"],
                                                          x["sd"])})
   pnorm_eval_weighted <- t(pnorm_eval)*df_ssq$pi
   
@@ -499,17 +518,15 @@ if(length(unique(expert_df$expert)) !=1){ #Only one expert, Don't need to anythi
     expert_df$weights <- expert_df$wi
   }
   
-  
-  
-  expert_df_sum <- expert_df %>% group_by(times_expert) %>% arrange(times_expert) %>%
-                  summarize(sum_weights = sum(weights))
+  expert_df_sum <- expert_df %>% dplyr::group_by(times_expert) %>% dplyr::arrange(times_expert) %>%
+    dplyr::summarize(sum_weights = sum(weights))
   
   if(any(expert_df_sum$sum_weights != 1)&& any(expert_df$weights != 1)){
     warning("Some weights don't sum to 1.. reweighting")
     
   }
-  expert_df <-expert_df %>% left_join(expert_df_sum,"times_expert") %>%
-    mutate(weights = weights/sum_weights)
+  expert_df <-expert_df %>% dplyr::left_join(expert_df_sum,"times_expert") %>%
+    dplyr::mutate(weights = weights/sum_weights)
   
   }
   
@@ -528,148 +545,145 @@ if(length(unique(expert_df$expert)) !=1){ #Only one expert, Don't need to anythi
 }
 
 
-#expert_density <- expert_dens(expert_df)
-
-
-
-expert_pooling <- function(expert_density = NULL, expert_quant_list = NULL,
-                           lower_bound = -Inf, upper_bound = Inf, St_indic = 0){
-
-dfs_expert <- list() 
-plts_pool <- list()
-dfs_pool <- list()
-
-
-if(!is.null(expert_quant_list)){ # If density
-
- if(is.null(expert_quant_list$weights_mat)){
-   weights_mat <- NULL
- }
-  suppress_messages(attach(expert_quant_list))
-  
-    
-max.timepoints  <- length(times)
-
-for(i in 1:max.timepoints){
-  
-  timepoint <- paste0("Time ",times[i])
-  
-  fit.eval <- SHELF::fitdist(vals = na.omit(v_array[,,i]),
-                      probs = na.omit(p_mat[,i]), lower = lower_bound, upper = upper_bound)
-  
-  weights <- na.omit(weights_mat[,i])
-  
-  if(is.null(weights_mat) && ncol(na.omit(v_array[,,i])) == 1){
-    weights <- 1 #Only one expert so weights should be 1
-  }else if(is.null(weights_mat)){
-    warning("No weights assigned assuming equal weights")
-    weights <- 1
-  }
-  
-  best_fit_index  <- apply(fit.eval$ssq[,c("normal","t","gamma", "lognormal", "beta")], 1, which.min)
-  best_fit <- names(fit.eval$ssq[,c("normal","t","gamma", "lognormal", "beta")])[best_fit_index]
-  
-  best_fit_loc <- sapply(best_fit, function(x){which(x  == names(fit.eval$ssq))})
-  fit.eval.dist  <- fit.eval[best_fit_loc]
-  
-  pool.df_output <- matrix(nrow = length(best_fit_loc),ncol = 3)
-  colnames(pool.df_output) <- c("param1", "param2", "param3")
-  
-  for(i in 1:length(best_fit_loc)){
-    pool.df_output[i,1:length(fit.eval.dist[[i]][i,])] <-  as.numeric(as.vector(fit.eval.dist[[i]][i,]))
-  }
-  dfs_expert[[timepoint]] <- data.frame(dist = best_fit, wi = weights, pool.df_output)
-
-  plts_pool[[timepoint]] <- makePoolPlot(fit  = fit.eval,
-                                         xl =lower_bound,
-                                         xu =upper_bound,
-                                         d = "best",
-                                         w = weights,
-                                         lwd =1,
-                                         xlab = "x",
-                                         ylab =expression(f[X](x)),
-                                         legend_full = TRUE,
-                                         ql = NULL,
-                                         qu = NULL,
-                                         nx = 200,
-                                         addquantile = FALSE,
-                                         fs = 12,
-                                         expertnames = NULL,
-                                         St_indic =St_indic
-                                         )
-
-  dfs_pool[[timepoint]] <-  plts_pool[[timepoint]][["data"]]
-
-  }
-
-}else{
-
-  times <- unique(expert_density$expert_df[,"times_expert"])
-  probs <- as.numeric(rownames(expert_density$expert_density))
-  
-for(i in 1:length(times)){
-  
-  timepoint <- paste0("Time ",times[i])
-  
-  index.loc <- which(expert_density$expert_df$times_expert == times[i])
-  temp_df <- expert_density$expert_df[index.loc, ]
-  temp_dens <- expert_density$expert_density[,index.loc]
-  
-  v <- temp_dens
-  p <- matrix(rep(probs, ncol(temp_dens)), nrow = length(probs), ncol = ncol(temp_dens))
-  
-  # Need to consider upper and lower bounds
-  fit.eval <- SHELF::fitdist(v, p, lower= lower_bound, upper = upper_bound)
-  
-  if(!is.null(temp_df$weights)){
-    weights <- temp_df$weights
-  }else{
-    weights <- 1
-  } 
-  
-  
-  best_fit_index  <- apply(fit.eval$ssq[,c("normal","t","gamma", "lognormal", "beta")], 1, which.min)
-  best_fit <- names(fit.eval$ssq[,c("normal","t","gamma", "lognormal", "beta")])[best_fit_index]
-  
-  best_fit_loc <- sapply(best_fit, function(x){which(x  == names(fit.eval$ssq))})
-  fit.eval.dist  <- fit.eval[best_fit_loc]
-  
-  pool.df_output <- matrix(nrow = length(best_fit_loc),ncol = 3)
-  colnames(pool.df_output) <- c("param1", "param2", "param3")
-  
-  for(i in 1:length(best_fit_loc)){
-    pool.df_output[i,1:length(fit.eval.dist[[i]][i,])] <-  as.numeric(as.vector(fit.eval.dist[[i]][i,]))
-  }
-  dfs_expert[[timepoint]] <- data.frame(dist = best_fit, wi = weights, pool.df_output)
-  
-  
-  plts_pool[[timepoint]] <- makePoolPlot(fit  = fit.eval,
-                            xl =lower_bound,
-                            xu =upper_bound,
-                            d = "best",
-                            w = weights,
-                            lwd =1,
-                            xlab = "x",
-                            ylab =expression(f[X](x)),
-                            legend_full = TRUE, 
-                            ql = NULL,
-                            qu = NULL,
-                            nx = 200,
-                            addquantile = FALSE,
-                            fs = 12, 
-                            expertnames = NULL,St_indic = St_indic)
-  
-  dfs_pool[[timepoint]] <-  plts_pool[[timepoint]][["data"]]
-  
-  
-  }
-  
-}
- list(dfs_expert =dfs_expert,
-      plts_pool =plts_pool,
-      dfs_pool = dfs_pool)
-
-}
+#Will modify for the SHINY APP
+# expert_pooling <- function(expert_quant_list = NULL,
+#                            lower_bound = -Inf, upper_bound = Inf, St_indic = 0){
+# 
+# dfs_expert <- list() 
+# plts_pool <- list()
+# dfs_pool <- list()
+# 
+# 
+# #if(!is.null(expert_quant_list)){ # If a list of quantiles and probabilities
+# 
+#  if(is.null(expert_quant_list$weights_mat)){
+#    weights_mat <- NULL
+#  }
+#   suppressMessages(attach(expert_quant_list))
+#   
+#     
+# max.timepoints  <- length(times)
+# 
+# for(i in 1:max.timepoints){
+#   
+#   timepoint <- paste0("Time ",times[i])
+#   
+#   fit.eval <- SHELF::fitdist(vals = na.omit(v_array[,,i]),
+#                       probs = na.omit(p_mat[,i]), lower = lower_bound, upper = upper_bound)
+#   
+#   weights <- na.omit(weights_mat[,i])
+#   
+#   if(is.null(weights_mat) && ncol(stats::na.omit(v_array[,,i])) == 1){
+#     weights <- 1 #Only one expert so weights should be 1
+#   }else if(is.null(weights_mat)){
+#     warning("No weights assigned assuming equal weights")
+#     weights <- 1
+#   }
+#   
+#   best_fit_index  <- apply(fit.eval$ssq[,c("normal","t","gamma", "lognormal", "beta")], 1, which.min)
+#   best_fit <- names(fit.eval$ssq[,c("normal","t","gamma", "lognormal", "beta")])[best_fit_index]
+#   
+#   best_fit_loc <- sapply(best_fit, function(x){which(x  == names(fit.eval$ssq))})
+#   fit.eval.dist  <- fit.eval[best_fit_loc]
+#   
+#   pool.df_output <- matrix(nrow = length(best_fit_loc),ncol = 3)
+#   colnames(pool.df_output) <- c("param1", "param2", "param3")
+#   
+#   for(i in 1:length(best_fit_loc)){
+#     pool.df_output[i,1:length(fit.eval.dist[[i]][i,])] <-  as.numeric(as.vector(fit.eval.dist[[i]][i,]))
+#   }
+#   dfs_expert[[timepoint]] <- data.frame(dist = best_fit, wi = weights, pool.df_output)
+# 
+#   plts_pool[[timepoint]] <- makePoolPlot(fit  = fit.eval,
+#                                          xl =lower_bound,
+#                                          xu =upper_bound,
+#                                          d = "best",
+#                                          w = weights,
+#                                          lwd =1,
+#                                          xlab = "x",
+#                                          ylab =expression(f[X](x)),
+#                                          legend_full = TRUE,
+#                                          ql = NULL,
+#                                          qu = NULL,
+#                                          nx = 200,
+#                                          addquantile = FALSE,
+#                                          fs = 12,
+#                                          expertnames = NULL,
+#                                          St_indic =St_indic
+#                                          )
+# 
+#   dfs_pool[[timepoint]] <-  plts_pool[[timepoint]][["data"]]
+# 
+#   }
+# 
+# # }else{ #This isn't really needed will remove
+# # 
+# #   times <- unique(expert_density$expert_df[,"times_expert"])
+# #   probs <- as.numeric(rownames(expert_density$expert_density))
+# #   
+# # for(i in 1:length(times)){
+# #   
+# #   timepoint <- paste0("Time ",times[i])
+# #   
+# #   index.loc <- which(expert_density$expert_df$times_expert == times[i])
+# #   temp_df <- expert_density$expert_df[index.loc, ]
+# #   temp_dens <- expert_density$expert_density[,index.loc]
+# #   
+# #   v <- temp_dens
+# #   p <- matrix(rep(probs, ncol(temp_dens)), nrow = length(probs), ncol = ncol(temp_dens))
+# #   
+# #   # Need to consider upper and lower bounds
+# #   fit.eval <- SHELF::fitdist(v, p, lower= lower_bound, upper = upper_bound)
+# #   
+# #   if(!is.null(temp_df$weights)){
+# #     weights <- temp_df$weights
+# #   }else{
+# #     weights <- 1
+# #   } 
+# #   
+# #   
+# #   best_fit_index  <- apply(fit.eval$ssq[,c("normal","t","gamma", "lognormal", "beta")], 1, which.min)
+# #   best_fit <- names(fit.eval$ssq[,c("normal","t","gamma", "lognormal", "beta")])[best_fit_index]
+# #   
+# #   best_fit_loc <- sapply(best_fit, function(x){which(x  == names(fit.eval$ssq))})
+# #   fit.eval.dist  <- fit.eval[best_fit_loc]
+# #   
+# #   pool.df_output <- matrix(nrow = length(best_fit_loc),ncol = 3)
+# #   colnames(pool.df_output) <- c("param1", "param2", "param3")
+# #   
+# #   for(i in 1:length(best_fit_loc)){
+# #     pool.df_output[i,1:length(fit.eval.dist[[i]][i,])] <-  as.numeric(as.vector(fit.eval.dist[[i]][i,]))
+# #   }
+# #   dfs_expert[[timepoint]] <- data.frame(dist = best_fit, wi = weights, pool.df_output)
+# #   
+# #   
+# #   plts_pool[[timepoint]] <- makePoolPlot(fit  = fit.eval,
+# #                             xl =lower_bound,
+# #                             xu =upper_bound,
+# #                             d = "best",
+# #                             w = weights,
+# #                             lwd =1,
+# #                             xlab = "x",
+# #                             ylab =expression(f[X](x)),
+# #                             legend_full = TRUE, 
+# #                             ql = NULL,
+# #                             qu = NULL,
+# #                             nx = 200,
+# #                             addquantile = FALSE,
+# #                             fs = 12, 
+# #                             expertnames = NULL,St_indic = St_indic)
+# #   
+# #   dfs_pool[[timepoint]] <-  plts_pool[[timepoint]][["data"]]
+# #   
+# #   
+# #   }
+# #   
+# # }
+#  list(dfs_expert =dfs_expert,
+#       plts_pool =plts_pool,
+#       dfs_pool = dfs_pool)
+# 
+# }
 
 #myfit <- fitdist(expert_density, probs)
 #plotfit(myfit,lp = T)
@@ -760,19 +774,26 @@ get_density <- function(dist, param1, param2, param3 = NULL, x = seq(0.01, 0.98,
 #' @param plt_obj A plot object from `plot_expert_opinion`.
 #' @param val The name of the opinion for which the interval will be generated.
 #' @param interval A vector of the upper and lower probabilities. Default is the standard 95% interval 
-#'
-#' @return
+#' @keywords Expert
+#' @return Credible interval based on the pooled distribution
 #' @export
-#' @importFrom sfsmisc integrate.xy
 #' @examples
 #' \dontrun{
+#' param_expert_example1 <- list()
+#' param_expert_example1[[1]] <- data.frame(dist = c("norm","t"),
+#'     wi = c(0.5,0.5), # Ensure Weights sum to 1
+#'     param1 = c(0.1,0.12),
+#'     param2 = c(0.005,0.005),
+#'     param3 = c(NA,3))
+#' plot_opinion1<- plot_expert_opinion(param_expert_example1[[1]], 
+#'               weights = param_expert_example1[[1]]$wi)
 #' cred_int(plot_opinion1,val = "linear pool", interval = c(0.025, 0.975))
 #' }
 #' 
 #' 
 cred_int <- function(plt_obj, val = "linear pool",interval = c(0.025, 0.975)){
   
-  plt_df <- plt_obj$data %>% filter(expert == val) %>% data.frame()
+  plt_df <- plt_obj$data %>% dplyr::filter(expert == val) %>% data.frame()
   
   total_integral <- integrate.xy(plt_df$x, plt_df$fx)
   partial_integral <- rep(NA, nrow(plt_df))
@@ -790,6 +811,30 @@ cred_int <- function(plt_obj, val = "linear pool",interval = c(0.025, 0.975)){
 }
 
 
+#' makePoolPlot
+#'
+#' @param fit 
+#' @param xl 
+#' @param xu 
+#' @param d 
+#' @param w 
+#' @param lwd 
+#' @param xlab 
+#' @param ylab 
+#' @param legend_full 
+#' @param ql 
+#' @param qu 
+#' @param nx 
+#' @param addquantile 
+#' @param fs 
+#' @param expertnames 
+#' @param St_indic 
+#'
+#' @return
+#' @import  ggplot2
+#' @importFrom  scales hue_pal
+#' @noRd
+#' 
 makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x", 
                           ylab=expression(f[X](x)), legend_full = TRUE, 
                           ql = NULL, qu = NULL, nx = 500, addquantile = FALSE, fs = 12, 
@@ -973,9 +1018,8 @@ makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x",
 #' @param xu_plt Optionally set the upper bound for the plot
 #' @param weights A vector with the weight of each expert. If omitted, set to equal weights.
 #' @param St_indic Set to 1 if you want to truncate the distributions to be between 0 and 1.
-#' @return
+#' @return A ggplot with pooled distributions.
 #' @export
-#'
 #' @examples 
 #' \dontrun{ 
 #'  expert_df <- data.frame(dist = c("norm","t"), #Distribution Name
@@ -1038,8 +1082,8 @@ plot_expert_opinion <- function(object, xl_plt = NULL, xu_plt = NULL, weights = 
     
     expert_dens_list <- expert_dens(object, probs =  seq(0.001, 0.99, by = 0.005))
     
-    lower <- as.numeric(head(expert_dens_list$expert_density, n = 1)-0.1)
-    upper <- as.numeric(tail(expert_dens_list$expert_density, n = 1)+0.1)
+    lower <- as.numeric(utils::head(expert_dens_list$expert_density, n = 1)-0.1)
+    upper <- as.numeric(utils::tail(expert_dens_list$expert_density, n = 1)+0.1)
     
     # if(is.null(lower) || is.null(upper)){
     #   stop("Upper and lower bounds required for distributions")
@@ -1092,14 +1136,14 @@ plot_expert_opinion <- function(object, xl_plt = NULL, xu_plt = NULL, weights = 
 #' Fitting Parametric Survival models with Expert Opinion
 #'
 #' Implementation of survival models with expert opinion on the survival probabilities or expected difference in survival.
-#' Function is equivalent to the `fit.models` in `survHE` expect for the inclusion of the "expert_type" and "param_expert" arguments. 
+#' Function is equivalent to the `fit.models` in `survHE` except for the inclusion of the "expert_type" and "param_expert" arguments. 
 #' Worked examples can be found in the [README](https://github.com/Philip-Cooney/expertsurv/blob/master/README.md) file.
-#' Note that the default method is "hmc", however, the user may use "mle"  (or "inla" for analysis without expert opinion).
+#' Note that the default method is "hmc", however, the user may use "mle"  (method "inla" is not included).
 #'
 #' @param formula As per `fit.models` in `survHE`
 #' @param data As per `fit.models` in `survHE`
 #' @param distr As per `fit.models` in `survHE`. Note Generalized F model is not available for method = "hmc" nor Royston-Parmar available with opinion on the mean survival.
-#' @param method As per `fit.models` in `survHE`. Expert Opinion is not implemented for the inla method.
+#' @param method As per `fit.models` in `survHE`. (except for the inla method). It should be noted that a few of the models are fit using JAGS, however, for consistency we still use "hmc".
 #' @param expert_type Either "survival", which indicates expert opinion on the survival function or "mean" (actually anything that does not contain "survival") which represents a belief on difference in survival.
 #' @param param_expert A list containing a dataframe for each timepoint (if applicable). Each dataframe should have columns with the following names and each row representing an expert:
 #'  \itemize{
@@ -1111,13 +1155,15 @@ plot_expert_opinion <- function(object, xl_plt = NULL, xu_plt = NULL, weights = 
 #' }
 #' @param ... Other arguments may be required depending on the example. See [README](https://github.com/Philip-Cooney/expertsurv/blob/master/README.md) for details.
 #'
-#' @return
+#' @return An object of class ``expertsurv`` which contains the parameters of the models estimated with expert opinion.
 #' @importFrom magrittr %>%
+#' @keywords models
 #' @export
 #' @md
 #' 
 #' @examples 
 #' \dontrun{
+#' require("dplyr")
 #' #Expert Opinion as a normal distribution centered on 0.1 with sd 0.005
 #' param_expert_example1 <- list()
 #' param_expert_example1[[1]] <- data.frame(dist = c("norm"),
@@ -1191,94 +1237,7 @@ fit.models.expert <- function(formula = NULL, data, distr = NULL, method = "hmc"
    fit.models(formula = formula, data = data, distr = distr, method = method, exArgs = exArgs)
 }
 
-## SET OF UTILITY FUNCTIONS TO INCLUDE SURVIVAL ANALYSIS RESULTS INTO A HEALTH ECONOMIC MODEL
-## Gianluca Baio + Will Browne + Peter Konings (10 Jan 2017)
-#' Fit parametric survival analysis for health economic evaluations
-#' 
-#' Runs the survival analysis with several useful options, using either MLE
-#' (via flexsurv) or a Bayesian approach (via R-INLA or rstan)
-#' 
-#' On object in the class \code{expertsurv} containing the following elements
-#' 
-#' @param formula a formula specifying the model to be used, in the form
-#' \code{Surv(time,event)~treatment[+covariates]} for flexsurv, or
-#' \code{inla.surv(time,event)~treatment[+covariates]} for INLA
-#' @param data A data frame containing the data to be used for the analysis.
-#' This must contain data for the 'event' variable. In case there is no
-#' censoring, then \code{event} is a column of 1s.
-#' @param distr a (vector of) string(s) containing the name(s) of the model(s)
-#' to be fitted.  Available options are:
-#' 
-#' \code{flexsurv}:
-#' "exponential","gamma","genf","gengamma","gompertz","weibull",
-#' "weibullPH","loglogistic","lognormal" \code{INLA}:
-#' "exponential","weibull","lognormal","loglogistic" \code{hmc}:
-#' "exponential","gamma","genf","gengamma","gompertz","weibull","weibullPH",
-#' "loglogistic","lognormal"
-#' @param method A string specifying the inferential method (\code{'mle'},
-#' \code{'inla'} or \code{'hmc'}). If \code{method} is set to \code{'hmc'},
-#' then \code{survHE} will write suitable model code in the Stan language
-#' (according to the specified distribution), prepare data and initial values
-#' and then run the model.
-#' @param \dots Additional options (for INLA or HMC).
-#' 
-#' 
-#' **HMC** specific options \code{chains} = number of chains to run in the HMC
-#' (default = 2) \code{iter} = total number of iterations (default = 2000)
-#' \code{warmup} = number of warmup iterations (default = iter/2) \code{thin} =
-#' number of thinning (default = 1) \code{control} = a list specifying
-#' Stan-related options, eg \code{control=list(adapt_delta=0.85)} (default =
-#' NULL) \code{seed} = the random seed (to make things replicable) \code{pars}
-#' = a vector of parameters (string, default = NA) \code{include} = a logical
-#' indicator (if FALSE, then the pars are not saved; default = TRUE)
-#' \code{priors} = a list (of lists) specifying the values for the parameters
-#' of the prior distributions in the models \code{save.stan} = a logical
-#' indicator (default = FALSE). If TRUE, then saves the data list for Stan and
-#' the model file(s)
-#' @return \item{models}{ A list containing the fitted models. These contain
-#' the output from the original inference engine (\code{flexsurv}, \code{INLA}
-#' or \code{rstan}). Can be processed using the methods specific to the
-#' original packages, or via \code{survHE}-specific methods (such as
-#' \code{plot}, \code{print}) or other specialised functions (eg to extrapolate
-#' the survival curves, etc). } \item{model.fitting}{ A list containing the
-#' output of the model-fit statistics (AIC, BIC, DIC). The AIC and BIC are
-#' estimated for all methods, while the DIC is only estimated when using
-#' Bayesian inference. } \item{method}{ A string indicating the method used to
-#' fit the model, ie \code{'mle'}, \code{'inla'} or \code{'hmc'}.  }
-#' \item{misc}{ A list containing the time needed to run the model(s) (in
-#' seconds), the formula used, the results of the Kaplan-Meier analysis (which
-#' is automatically performed using \code{npsurv}) and the original data frame.
-#' }
-#' @author Gianluca Baio
-#' @seealso \code{make.surv}
-#' @template refs
-#' @keywords Parametric survival models Bayesian inference via Hamiltonian
-#' Monte Carlo Bayesian inference via Integrated Nested Laplace Approximation
-#' @examples
-#' \dontrun{
-#' # Loads an example dataset from 'flexsurv'
-#' data(bc)
-#' 
-#' # Fits the same model using the 3 inference methods
-#' mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-#'     distr="exp",method="mle")
-#' hmc = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-#'     distr="exp",method="hmc")
-#'     
-#' # Prints the results in comparable fashion using the survHE method
-#' print(mle)
-#' print(hmc)
-#' 
-#' # Or visualises the results using the original packages methods
-#' print(mle,original=TRUE)
-#' print(hmc,original=TRUE)
-#' 
-#' # Plots the survival curves and estimates
-#' plot(mle)
-#' plot(mle,hmc,labs=c("MLE","HMC"),colors=c("black","blue"))
-#' }
-#'
-#' @export fit.models
+
 fit.models <- function (formula = NULL, data, distr = NULL, method = "mle", exArgs, 
           ...){
 
@@ -1298,7 +1257,7 @@ fit.models <- function (formula = NULL, data, distr = NULL, method = "mle", exAr
   }
   if (method == "inla") {
     
-    error("INLA is not implemented in expertsurv")
+    stop("INLA is not implemented in expertsurv")
     
     # res <-format_output_fit.models(lapply(distr, function(x) survHE:::runINLA(x, 
     #                                                                   exArgs)), method, distr, formula, data)
@@ -1443,8 +1402,8 @@ runHMC <- function (x, exArgs){
       
       #Inits as per flexsurvreg (reparameterized)
       modelinits <- function(){
-        beta = c(log(1/mean(data.jags$t)*runif(1,0.8,1.5)),rep(0,data.jags$H -1))
-        list(alpha1 = runif(1,0.001,0.003),alpha2 = runif(1,0.001,0.003), beta = beta) 
+        beta = c(log(1/mean(data.jags$t)*stats::runif(1,0.8,1.5)),rep(0,data.jags$H -1))
+        list(alpha1 = stats::runif(1,0.001,0.003),alpha2 = stats::runif(1,0.001,0.003), beta = beta) 
       }
        
     }else if(d3 == "gga"){ #(d3 == "gga")
@@ -1533,18 +1492,21 @@ runHMC <- function (x, exArgs){
 #' @seealso fit.models
 #' @references Baio (2020). survHE
 #' @keywords Parametric survival models Bayesian inference via Hamiltonian
-#' Monte Carlo 
+#' Monte Carlo
+#' @import tibble
+#' @import dplyr
+#' @import stats 
 #' @importFrom stringr str_replace_all
 #' @noRd 
 make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
   availables <- load_availables()
   method <- "hmc"
-  formula_temp <- update(formula, paste(all.vars(formula, data)[1], 
+  formula_temp <- stats::update(formula, paste(all.vars(formula, data)[1], 
                                         "~", all.vars(formula, data)[2], "+."))
-  mf <- tibble::as_tibble(model.frame(formula_temp, data)) %>% 
-          dplyr::rename(time = 1,event = 2) %>% rename_if(is.factor, .funs = ~gsub("as.factor[( )]","", .x)) %>% 
+  mf <- tibble::as_tibble(stats::model.frame(formula_temp, data)) %>% 
+          dplyr::rename(time = 1,event = 2) %>% dplyr::rename_if(is.factor, .funs = ~gsub("as.factor[( )]","", .x)) %>% 
           dplyr::rename_if(is.factor, .funs = ~gsub("[( )]","", .x)) %>% 
-          bind_cols(tibble::as_tibble(model.matrix(formula_temp,data)) %>% dplyr::select(contains("Intercept"))) %>%
+          dplyr::bind_cols(tibble::as_tibble(stats::model.matrix(formula_temp,data)) %>% dplyr::select(contains("Intercept"))) %>%
           dplyr::select(time,event, contains("Intercept"), everything()) %>% tibble::rownames_to_column("ID")
   
   ####Code Change Here
@@ -1553,8 +1515,8 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
 
   if (distr3 %!in% c("rps")) {
     data.stan <- list(t = (mf$time), d = mf$event, n = nrow(mf), 
-                      X = matrix(model.matrix(formula, data), nrow = nrow(mf)), 
-                      H = ncol(model.matrix(formula, data)))
+                      X = matrix(stats::model.matrix(formula, data), nrow = nrow(mf)), 
+                      H = ncol(stats::model.matrix(formula, data)))
     if (data.stan$H == 1) {
       data.stan$X <- cbind(data.stan$X, rep(0, data.stan$n))
       data.stan$H <- ncol(data.stan$X)
@@ -1573,7 +1535,7 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
     B <- flexsurv::basis(knots, log(mf$time))
     B_expert <- flexsurv::basis(knots, log(exArgs$times_expert))
     DB <- flexsurv::dbasis(knots, log(mf$time))
-    mm <- model.matrix(formula, data)[, -1]
+    mm <- stats::model.matrix(formula, data)[, -1]
     if (length(mm) < 1) {
       mm <- matrix(rep(0, nrow(mf)), nrow = nrow(mf), ncol = 2)
     }
@@ -1787,6 +1749,7 @@ make_data_stan <- function (formula, data, distr3, exArgs = globalenv()){
 #' 
 #' @param model The 'rstan' object with the model fit
 #' @param distr3 The 'rstan' object with the model fit
+#' @importFrom loo loo
 #' @return \item{list}{A list containing the modified name of the 
 #' distribution, the acronym (3-letters abbreviation), or the
 #' labels (humane-readable name)}.
@@ -1806,7 +1769,7 @@ compute_ICs_stan <-function (model, distr3, data.stan){
     beta <- model$BUGSoutput$sims.matrix[, grep("beta", 
                                                 colnames(model$BUGSoutput$sims.matrix))]
   }
-  beta.hat <- apply(beta, 2, median)
+  beta.hat <- apply(beta, 2, stats::median)
   linpred <- beta %*% t(data.stan$X)
   linpred.hat <- beta.hat %*% t(data.stan$X)
   model.eval <- paste0("lik_", distr3)
@@ -1838,7 +1801,7 @@ compute_ICs_stan <-function (model, distr3, data.stan){
     warning(paste0("pD is ", round(pD), " for ", distr3, 
                    "; DIC estimates unreliable, use WAIC or PML."))
   }
-  pV <- 0.5 * var(D.theta)
+  pV <- 0.5 * stats::var(D.theta)
   dic <- mean(D.theta) + pD
   dic2 <- mean(D.theta) + pV
   aic <- D.bar + 2 * npars
@@ -1876,7 +1839,7 @@ format_output_fit.models <- function (output, method, distr, formula, data){
                formula = formula, data = data, model_name = unlist(lapply(output, 
                                                                           function(x) x$model_name)))
   if (any(distr == "polyweibull")) {
-    misc$km = lapply(formula, function(f) make_KMmake_KM(f, data))
+    misc$km = lapply(formula, function(f) make_KM(f, data))
   }
   else {
     misc$km = make_KM(formula, data)
@@ -1980,36 +1943,36 @@ get_Surv <- function(dist, time, param1 = NULL, param2 = NULL, param3 = NULL, lo
 get_mean_diff <- function(dist, time, param1 = NULL, param2 = NULL, param3 = NULL, log = F, data.stan = NULL){
   
   if(dist == "wei"){
-    return(flexsurv::mean_weibull(shape = param1, scale = param2[1])-mean_weibull(shape = param1, scale = param2[2]))
+    return(flexsurv::mean_weibull(shape = param1, scale = param2[1])-flexsurv::mean_weibull(shape = param1, scale = param2[2]))
   }
   
   if(dist == "wph"){
-    return(flexsurv::mean_weibullPH(shape = param1, scale = param2[1])-mean_weibullPH(shape = param1, scale = param2[2]))
+    return(flexsurv::mean_weibullPH(shape = param1, scale = param2[1])-flexsurv::mean_weibullPH(shape = param1, scale = param2[2]))
   }
   
   if(dist == "exp"){
-    return(flexsurv::mean_exp(rate = param1[1])-mean_exp(rate = param1[2]))
+    return(flexsurv::mean_exp(rate = param1[1])-flexsurv::mean_exp(rate = param1[2]))
     
   }
   
   if(dist == "gam"){
-    return(flexsurv::mean_gamma(shape = param1, rate = param2[1])- mean_gamma(shape = param1, rate = param2[2]))
+    return(flexsurv::mean_gamma(shape = param1, rate = param2[1])-flexsurv::mean_gamma(shape = param1, rate = param2[2]))
   }
   
   if(dist == "gga"){
-    return(flexsurv::mean_gengamma(mu = param1[1], sigma = param2, Q = param3)-mean_gengamma(mu = param1[2], sigma = param2, Q = param3))
+    return(flexsurv::mean_gengamma(mu = param1[1], sigma = param2, Q = param3)-flexsurv::mean_gengamma(mu = param1[2], sigma = param2, Q = param3))
   }
   
   if(dist == "gom"){
-    return(flexsurv::mean_gompertz(shape = param1, rate = param2[1])-mean_gompertz(shape = param1, rate = param2[2]))
+    return(flexsurv::mean_gompertz(shape = param1, rate = param2[1])-flexsurv::mean_gompertz(shape = param1, rate = param2[2]))
   }
   
   if(dist == "lno"){
-    return(flexsurv::mean_lnorm(meanlog  = param1[1], sdlog  = param2)-mean_lnorm(meanlog  = param1[2], sdlog  = param2))
+    return(flexsurv::mean_lnorm(meanlog  = param1[1], sdlog  = param2)-flexsurv::mean_lnorm(meanlog  = param1[2], sdlog  = param2))
   }
   
   if(dist == "llo"){
-    return(flexsurv::mean_llogis(shape  = param1[1], scale  = param2)-mean_llogis(shape  = param1[2], scale  = param2))
+    return(flexsurv::mean_llogis(shape  = param1[1], scale  = param2)-flexsurv::mean_llogis(shape  = param1[2], scale  = param2))
   }
   
   # if(dist == "rps"){
@@ -2062,7 +2025,7 @@ lik_rps <- function (x, linpred, linpred.hat, model, data.stan){
   
   dist <- "rps"
   gamma <- rstan::extract(model)$gamma
-  gamma.hat <- apply(gamma, 2, median)
+  gamma.hat <- apply(gamma, 2, stats::median)
   linpred.hat <- as.numeric(linpred.hat)
   
   # LL<- apply(gamma_iters, 1, function(x){data.stan$d*log(hsurvspline(data.stan$t, gamma = x, knots = m.all$misc$data.stan[[1]]$knots))+
@@ -2131,11 +2094,11 @@ lik_exp <- function (x, linpred, linpred.hat, model, data.stan){
   dist = "exp"
   
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
-    data.stan$d * log(hexp(data.stan$t, exp(linpred[i, ]))) + 
-      log(1 - pexp(data.stan$t, exp(linpred[i, ])))
+    data.stan$d * log(flexsurv::hexp(data.stan$t, exp(linpred[i, ]))) + 
+      log(1 - stats::pexp(data.stan$t, exp(linpred[i, ])))
   })), nrow = nrow(linpred), byrow = T)
-  logf.hat <- matrix(data.stan$d * log(hexp(data.stan$t, exp(linpred.hat))) + 
-                       log(1 - pexp(data.stan$t, exp(linpred.hat))), nrow = 1)
+  logf.hat <- matrix(data.stan$d * log(flexsurv::hexp(data.stan$t, exp(linpred.hat))) + 
+                       log(1 - stats::pexp(data.stan$t, exp(linpred.hat))), nrow = 1)
   
   logf.expert <- rep(NA, nrow(linpred))
   
@@ -2161,7 +2124,7 @@ lik_wei <- function (x, linpred, linpred.hat, model, data.stan ){
   
   dist = "wei"
   shape <- alpha <- as.numeric(rstan::extract(model)$alpha)
-  shape.hat <- median(shape)
+  shape.hat <- stats::median(shape)
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
     data.stan$d * log(flexsurv::hweibull(data.stan$t, shape[i], exp(linpred[i, 
     ]))) + log(1 - stats::pweibull(data.stan$t, shape[i], exp(linpred[i, 
@@ -2198,7 +2161,7 @@ lik_lno <- function (x, linpred, linpred.hat, model, data.stan){
   dist = "lno"
   
   sigma = as.numeric(rstan::extract(model)$alpha)
-  sigma.hat = median(sigma)
+  sigma.hat = stats::median(sigma)
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
     data.stan$d * log(flexsurv::hlnorm(data.stan$t, (linpred[i, ]), 
                              sigma[i])) + log(1 - stats::plnorm(data.stan$t, (linpred[i, 
@@ -2229,7 +2192,7 @@ lik_lno <- function (x, linpred, linpred.hat, model, data.stan){
 lik_llo <- function (x, linpred, linpred.hat, model, data.stan){
   dist = "llo"
   sigma = as.numeric(rstan::extract(model)$alpha)
-  sigma.hat = median(sigma)
+  sigma.hat = stats::median(sigma)
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
     data.stan$d * log(flexsurv::hllogis(data.stan$t, sigma[i], exp(linpred[i,]))) +
       log(1 - flexsurv::pllogis(data.stan$t, sigma[i], exp(linpred[i, 
@@ -2266,7 +2229,7 @@ lik_llo <- function (x, linpred, linpred.hat, model, data.stan){
 lik_wph <- function (x, linpred, linpred.hat, model, data.stan){
   dist = "wph"
   shape <- alpha <- as.numeric(rstan::extract(model)$alpha)
-  shape.hat = median(shape)
+  shape.hat = stats::median(shape)
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
     data.stan$d * log(flexsurv::hweibullPH(data.stan$t, shape[i], exp(linpred[i, 
     ]))) + log(1 - flexsurv::pweibullPH(data.stan$t, shape[i], 
@@ -2303,7 +2266,7 @@ lik_gam <- function (x, linpred, linpred.hat, model, data.stan){
   dist = "gam"
   
   shape <- alpha <-  as.numeric(model$BUGSoutput$sims.matrix[ , grep("alpha",colnames(model$BUGSoutput$sims.matrix))])
-  shape.hat <- median(shape)
+  shape.hat <- stats::median(shape)
   
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
     data.stan$d * log(flexsurv::hgamma(data.stan$t, shape = shape[i], 
@@ -2340,7 +2303,7 @@ lik_gam <- function (x, linpred, linpred.hat, model, data.stan){
 lik_gom <- function (x, linpred, linpred.hat, model, data.stan){
   dist = "gom"
   shape <- alpha <- as.numeric(model$BUGSoutput$sims.matrix[ , grep("alpha",colnames(model$BUGSoutput$sims.matrix))])
-  shape.hat = median(shape)
+  shape.hat = stats::median(shape)
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
     data.stan$d * log(flexsurv::hgompertz(data.stan$t, shape = shape[i], 
                                 rate = exp(linpred[i, ]))) + 
@@ -2373,9 +2336,9 @@ lik_gom <- function (x, linpred, linpred.hat, model, data.stan){
 lik_gga <- function (x, linpred, linpred.hat, model, data.stan){
   dist = "gga"
   q = as.numeric(model$BUGSoutput$sims.matrix[ , grep("Q",colnames(model$BUGSoutput$sims.matrix))])
-  q.bar = median(q)
+  q.bar = stats::median(q)
   scale = as.numeric(model$BUGSoutput$sims.matrix[ , grep("sigma",colnames(model$BUGSoutput$sims.matrix))])
-  scale.bar = median(scale)
+  scale.bar = stats::median(scale)
   
   d2 <- sapply(data.stan$d,function(x){ifelse(x == 1, 0,1)})
  
@@ -2460,10 +2423,10 @@ load_availables <- function(){
 #' Print a summary of the survival model(s) fitted by \code{fit.models}
 #' 
 #' Prints the summary table for the model(s) fitted, with the estimate of the
-#' parameters
+#' parameters - ported from ``survHE``.
 #' 
 #' 
-#' @param x the \code{survHE} object (the output of the call to
+#' @param x the \code{expertsurv} object (the output of the call to
 #' \code{fit.models})
 #' @param mod is the index of the model. Default value is 1, but the user can
 #' choose which model fit to visualise, if the call to fit.models has a vector
@@ -2471,18 +2434,23 @@ load_availables <- function(){
 #' @param \dots additional options, including: \code{digits} = number of
 #' significant digits to be shown in the summary table (default = 6)
 #' \code{original} = a flag to say whether the *original* table
-#' from either \code{flexsurv} or \code{INLA} or \code{rstan} should be printed
+#' from either \code{flexsurv} or \code{rstan/JAGS} should be printed
 #' @author Gianluca Baio
-#' @template refs
 #' @keywords Parametric survival models
 #' @examples
 #' \dontrun{ 
-#' data(bc)
 #' 
-#' mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-#'     distr="exp",method="mle")
+#' mle = example1 <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
+#'                    distr=c("wph", "gomp"),
+#'                    method="mle",
+#'                    pool_type = "log pool",
+#'                    opinion_type = "survival",
+#'                    times_expert = timepoint_expert,
+#'                    param_expert = param_expert_example1)
 #' print(mle)
 #' }
+#' @references 
+#' \insertRef{Baio.2020}{expertsurv}
 #' @exportS3Method print
 #' @export print.expertsurv
 print.expertsurv <-function (x, mod = 1, ...) 
@@ -2702,12 +2670,28 @@ get_stats_hmc <- function (x, mod){
 #' @param ... Optional inputs. Must include an \code{expertsurv} object.
 #' @param type should the DIC, WAIC, PML be plotted (AIC, BIC also allowed but only valid for frequentist approach). 
 #'
+#' @import dplyr
+#' @import ggplot2
+#' 
+#'
 #' @return A plot with the relevant model fitting statistics plotted in order of fit.
 #' @export
 #'
+#'
 #' @examples
 #' \dontrun{ 
-#' data2 <- survHE::data %>% rename(status = censored) %>% mutate(time2 = ifelse(time > 10, 10, time),
+#' require("dplyr")
+#' param_expert_example1 <- list()
+#' param_expert_example1[[1]] <- data.frame(dist = c("norm"),
+#'                                          wi = c(1), # Ensure Weights sum to 1
+#'                                          param1 = c(0.1),
+#'                                          param2 = c(0.005),
+#'                                          param3 = c(NA))
+#' timepoint_expert <- 14 # Expert opinion at t = 14
+#' 
+#' 
+#' data2 <- expertsurv::data %>% rename(status = censored) %>% 
+#' mutate(time2 = ifelse(time > 10, 10, time),
 #' status2 = ifelse(time> 10, 0, status))
 #'example1  <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
 #'                               distr=c("wei", "gomp"),
@@ -2718,7 +2702,7 @@ get_stats_hmc <- function (x, mod){
 #'                               param_expert = param_expert_example1)
 #'
 #'
-#' model.fit.plot(example1, type = "dic")
+#' model.fit.plot(example1, type = "aic")
 #' 
 #' }
 #' 
@@ -2857,7 +2841,7 @@ integrate.xy <-function (x, fx, a, b, use.spline = TRUE, xtol = 2e-08){
        stop("'b' must be elementwise >= 'a'")
    }
    if (use.spline) {
-     xy <- spline(x, fx, n = max(1024, 3 * n))
+     xy <- stats::spline(x, fx, n = max(1024, 3 * n))
      if (xy$x[length(xy$x)] < x[n]) {
        if (TRUE) 
          cat("working around spline(.) BUG --- hmm, really?\n\n")
@@ -2871,7 +2855,7 @@ integrate.xy <-function (x, fx, a, b, use.spline = TRUE, xtol = 2e-08){
    ab <- unique(c(a, b))
    BB <- abs(outer(x, ab, "-")) < (xtol * max(b - a))
    if (any(j <- 0 == colSums(BB))) {
-     y <- approx(x, fx, xout = ab[j])$y
+     y <- stats::approx(x, fx, xout = ab[j])$y
      x <- c(ab[j], x)
      i <- sort.list(x)
      x <- x[i]

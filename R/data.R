@@ -1,4 +1,4 @@
-#' A fictional survival trial.
+#' A fictional survival trial taken directly from survHE.
 #'
 #' A dataset containing fictional data from a trial, where
 #' the main outcome is in terms of time-to-event and 
@@ -20,4 +20,7 @@
 #'   \item{ethnic}{A categorical variable representing the 
 #'   individual's ethnic group, as measured from a Census}
 #' }
+#' @references 
+#' \insertRef{Baio.2020}{expertsurv}
+#' 
 "data"

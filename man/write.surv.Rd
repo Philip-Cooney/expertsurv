@@ -26,25 +26,37 @@ A spreadsheet file with the simulation(s) of the relevant quantity
 }
 \description{
 Writes the survival summary to an excel file (helpful to then call the
-values in the Markov model)
-}
-\details{
-Something will go here
+values in the Markov model) - ported from \code{survHE}
 }
 \examples{
 \dontrun{
-# Loads an example dataset from 'flexsurv'
-data(bc)
+require("dplyr")
+param_expert_example1 <- list()
+param_expert_example1[[1]] <- data.frame(dist = c("norm","t"),
+                                        wi = c(0.5,0.5), # Ensure Weights sum to 1
+                                        param1 = c(0.1,0.12),
+                                        param2 = c(0.15,0.5),
+                                        param3 = c(NA,3))
 
-# Fits the same model using the 3 inference methods
-mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-    distr="exp",method="mle")
-p.mle = make.surv(mle)
+timepoint_expert <- 14
+data2 <- data \%>\% rename(status = censored) \%>\% mutate(time2 = ifelse(time > 10, 10, time),
+                                                      status2 = ifelse(time> 10, 0, status))
+example1 <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
+                             distr=c("wph", "gomp"),
+                             method="mle",
+                             pool_type = "log pool",
+                             opinion_type = "survival",
+                             times_expert = timepoint_expert,
+                             param_expert = param_expert_example1)
+
+p.mle = make.surv(example1,mod= 2,t = 1:30, nsim=1000) #Plot the Gompertz model
 write.surv(p.mle,file="test.xlsx")
 }
 }
 \references{
-P Cooney (2023). expertsurv: Incorporating expert opinion into parametric survival models
+P Cooney (2023). expertsurv: Incorporating expert opinion into parametric survival models.
+
+\insertRef{Baio.2020}{expertsurv}
 }
 \seealso{
 \code{make.surv}

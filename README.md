@@ -94,7 +94,7 @@ bi-modal linear pool) which has a $95\%$ credible interval between
 $9.0−11.9\%$ calculated with the function below:
 
 ![Expert prior
-distributions](plots/Vignette_Example_1_Expert_Opinion.png)
+distributions](inst/image/Vignette_Example_1_Expert_Opinion.png)
 
     cred_int_val <- cred_int(plot_opinion1,val = "log pool", interval = c(0.025, 0.975))
 
@@ -134,9 +134,10 @@ referring to the $95\%$ confidence region for the experts prior belief).
       scale_y_continuous(expand = c(0, 0), limits = c(0, NA), breaks=seq(0, 1, 0.05))+
       geom_segment(aes(x = 14, y = cred_int_val[1], xend = 14, yend = cred_int_val[2]))
 
-![Model Comparison](plots/Vignette_Example_1_DIC.png)
+![Model Comparison](inst/image/Vignette_Example_1_DIC.png)
 
-![Survival function with Expert prior](plots/Vignette_Example_1.png)
+![Survival function with Expert
+prior](inst/image/Vignette_Example_1.png)
 
 ## Expert Opinion using Penalized Maximum Likelihood
 
@@ -160,7 +161,7 @@ factor (not shown) and are very similar to the DIC presented for the
 Bayesian model.
 
 <!-- ```{r echo = FALSE, fig.cap = "Survival function with Expert Information-Penalized Maximum Likelihood"} -->
-<!-- knitr::include_graphics("plots/MLE-Weibull-Gomp.png") -->
+<!-- knitr::include_graphics("inst/image/MLE-Weibull-Gomp.png") -->
 <!-- ``` -->
 
 $\texttt{expertsurv}$ modifies some of the $\texttt{flexsurv}$
@@ -206,7 +207,7 @@ probability and does not change the likelihood.
     param_expert_vague[[1]] <- data.frame(dist = "beta", wi = 1, param1 = 1, param2 = 1, param2 = NA)
 
 ![Survival function with Expert prior (left) and Vague prior
-(right)](plots/Vignette_Example_2.png)
+(right)](inst/image/Vignette_Example_2.png)
 
 The survival function for “arm 1” has been shifted downwards slightly,
 however the covariate for the accelerated time factor has markedly
@@ -235,7 +236,7 @@ shape to be positive.
                                                          id_trt = 1, # Survival difference is Mean_surv[id_trt]- Mean_surv[id_comp] 
                                                          param_expert = param_expert3)
 
-![Survival difference](plots/Vignette_Example_3.png)
+![Survival difference](inst/image/Vignette_Example_3.png)
 
 ## Compatability with underlying packages survHE and flexsurv
 

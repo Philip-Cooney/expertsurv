@@ -20,7 +20,7 @@
 #' @keywords Kaplan-Meier estimate 
 #' @noRd 
 make_KM <- function(formula,data) {
-  km.formula <- as.formula(gsub("inla.surv","Surv",deparse(formula)))
+  km.formula <- stats::as.formula(gsub("inla.surv","Surv",deparse(formula)))
   # Computes the Kaplan Meier curve using the package "rms"
   ObjSurvfit <- rms::npsurv(      # Uses the function "npsurv" from the package "rms"
     formula = km.formula,         # to fit the model specified in the "formula" object

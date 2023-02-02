@@ -36,29 +36,13 @@ curve}
 \item{...}{Additional options}
 }
 \description{
-Creates the survival curves for the fitted model(s)
-}
-\examples{
-\dontrun{ 
-# Loads an example dataset from 'flexsurv'
-data(bc)
-
-# Fits the same model using the 3 inference methods
-mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-    distr="exp",method="mle")
-p.mle = make.surv(mle)
-psa.plot(p.mle)
-# Can also use the main 'plot' function to visualise the survival curves
-# and include uncertainty by using a number 'nsim' of simulations
-plot(mle,nsim=10)
-}
-
+Creates the survival curves for the fitted model(s) - Original code from \code{survHE}
 }
 \references{
-P Cooney (2023). expertsurv: Incorporating expert opinion into parametric survival models
+\insertRef{Baio.2020}{expertsurv}
 }
 \seealso{
-\code{fit.models}, \code{psa.plot}, \code{write.surv}
+\code{psa.plot} (for example)
 }
 \author{
 Gianluca Baio

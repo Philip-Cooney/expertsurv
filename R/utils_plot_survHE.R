@@ -32,8 +32,10 @@
 #' @seealso Something will go here
 #' @references Something will go here
 #' @keywords Parametric survival models
+#' @import dplyr
+#' @import ggplot2
 #' @examples
-#' 
+#' #' 
 #' data(bc)
 #' 
 #' mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
@@ -214,6 +216,8 @@ plot_ggplot_expertsurv <- function(exArgs) {
 #' @return \item{surv.curv}{The \code{ggplot2} object with the graph}
 #' @note Something will go here
 #' @author Gianluca Baio
+#' @import tibble
+#' @import dplyr
 #' @keywords Parametric survival models
 #' @noRd 
 make_data_surv <- function(x,mods=1:length(x$models),nsim=1,t=NULL,newdata=NULL,add.km=FALSE) {
@@ -275,6 +279,7 @@ make_data_surv <- function(x,mods=1:length(x$models),nsim=1,t=NULL,newdata=NULL,
 #' @param dataKM The dataset with the (optional) data for the KM estimate
 #' @param mods The models to be plotted (a vector of numbers)
 #' @return \item{out}{A list with the dataset to be plotted including the survival curves}
+#' @import ggplot2
 #' @note Something will go here
 #' @author Gianluca Baio
 #' @keywords Parametric survival models
@@ -397,6 +402,7 @@ make_surv_curve_plot <- function(toplot,datakm=NULL,mods) {
 #' defining the names of the models fitted \code{add.km} = TRUE (whether to also 
 #' add the Kaplan Meier estimates of the data) \code{legend} = TRUE (whether to also 
 #' add the legend to the graph)
+#' @import graphics
 #' @note Something will go here
 #' @author Gianluca Baio
 #' @seealso Something will go here
@@ -586,7 +592,7 @@ plot_base_survHE <- function(x,exArgs) {
     leg.txt <- character()
     for (i in 1:nmodels) {
       for (j in 1:length(newdata)) {
-        points(pts[[i]][[j]],t="l",col=colors[i],lty=j)
+        graphics::points(pts[[i]][[j]],t="l",col=colors[i],lty=j)
         leg.txt[j] <- paste0(names(newdata[[j]]),"=",prettyNum(newdata[[j]],format="fg"),collapse=", ")
       }
     }
@@ -598,7 +604,7 @@ plot_base_survHE <- function(x,exArgs) {
       #####pts <- lapply(res[[i]]$S[[1]],function(m) cbind(m[,1],m[,2]))
       #####lapply(1:length(pts), function(x) points(pts[[x]],t="l",col=colors[i],lty=x))
       pts <- lapply(res[[i]]$S[[1]],function(m) m %>% as.matrix())
-      lapply(1:length(pts), function(x) points(pts[[x]]$t,pts[[x]]$S,t="l",col=colors[i],lty=x))
+      lapply(1:length(pts), function(x) graphics::points(pts[[x]]$t,pts[[x]]$S,t="l",col=colors[i],lty=x))
     }
     if(legend) {legend(x="topright",legend=labs,lwd=2,bty="n",col=col,cex=cex.lab)}
   }

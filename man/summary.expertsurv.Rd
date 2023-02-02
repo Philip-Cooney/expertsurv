@@ -28,22 +28,14 @@ to be used (to compute interval estimates)}
 survival times } \item{tab}{ A summary table }
 }
 \description{
-Calculates the mean survival time as the area under the survival curve
+Calculates the mean survival time as the area under the survival curve -
+ported from \code{survHE}
 }
 \details{
 A list comprising of the following elements
 }
-\examples{
-\dontrun{
-data(bc)
-
-mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-    distr="exp",method="mle")
-summary(mle,nsim=100)
-}
-}
 \references{
-P Cooney (2023). expertsurv: Incorporating expert opinion into parametric survival models
+\insertRef{Baio.2020}{expertsurv}
 }
 \seealso{
 \code{fit.models}, \code{make.surv}

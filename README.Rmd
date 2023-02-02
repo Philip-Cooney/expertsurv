@@ -93,7 +93,7 @@ For the log pool we have a uni-modal distribution  (in contrast to the bi-modal 
 credible interval between $9.0−11.9\%$ calculated with the function below:
 
 ```{r echo = FALSE, fig.cap = "Expert prior distributions"}
-knitr::include_graphics("plots/Vignette_Example_1_Expert_Opinion.png")
+knitr::include_graphics("inst/image/Vignette_Example_1_Expert_Opinion.png")
 ```
 
 ```
@@ -135,11 +135,11 @@ model.fit.plot(example1, type = "dic")
 
 ```
 ```{r echo = FALSE, fig.cap = "Model Comparison"}
-knitr::include_graphics("plots/Vignette_Example_1_DIC.png")
+knitr::include_graphics("inst/image/Vignette_Example_1_DIC.png")
 ```
 
 ```{r echo = FALSE, fig.cap = "Survival function with Expert prior"}
-knitr::include_graphics("plots/Vignette_Example_1.png")
+knitr::include_graphics("inst/image/Vignette_Example_1.png")
 ```
 
 
@@ -153,7 +153,7 @@ We find that the AIC values also favour the Gompertz model by a large factor (no
 
 
 <!-- ```{r echo = FALSE, fig.cap = "Survival function with Expert Information-Penalized Maximum Likelihood"} -->
-<!-- knitr::include_graphics("plots/MLE-Weibull-Gomp.png") -->
+<!-- knitr::include_graphics("inst/image/MLE-Weibull-Gomp.png") -->
 <!-- ``` -->
 
 $\texttt{expertsurv}$ modifies some of the $\texttt{flexsurv}$ functions, so if you wish to use revert to the original $\texttt{flexsurv}$ functions within the same session you should run the following commands:
@@ -204,7 +204,7 @@ param_expert_vague[[1]] <- data.frame(dist = "beta", wi = 1, param1 = 1, param2 
 ```
 
 ```{r echo = FALSE, fig.cap = "Survival function with Expert prior (left) and Vague prior (right)"}
-knitr::include_graphics("plots/Vignette_Example_2.png")
+knitr::include_graphics("inst/image/Vignette_Example_2.png")
 ```
 
 The survival function for "arm 1" has been shifted downwards slightly, however the covariate for the accelerated time factor has markedly increased to counteract the lower survival probability for the reference (arm 0).
@@ -233,7 +233,7 @@ survHE.data.model  <- fit.models.expert(formula=Surv(time2,status2)~as.factor(ar
 ```
 
 ```{r echo = FALSE, fig.cap = "Survival difference"}
-knitr::include_graphics("plots/Vignette_Example_3.png")
+knitr::include_graphics("inst/image/Vignette_Example_3.png")
 ```
 
 
@@ -242,7 +242,7 @@ knitr::include_graphics("plots/Vignette_Example_3.png")
 As stated in the introduction this package relies on many  of the core functions of the $\texttt{survHE}$ package [@Baio.2020]. Because we do not not implement expert opinion with INLA and because future versions of $\texttt{survHE}$ may introduce conflicts with the current implementation, we have directly ported the key functions from $\texttt{survHE}$ into the package so that $\texttt{expertsurv}$ no longer imports $\texttt{survHE}$ (of course all credit for those functions goes to [@Baio.2020] and co-authors).
 
 
-In theory the same concern could apply to $\texttt{flexsurv}$ package [flexsurv], however, this package has been released for some years and it is unlikely that the code architecture would change sufficiently to cause issues (however, for reference $\texttt{expertsurv}$ was built  with  $\texttt{flexsurv}=\text{v}2.0$).
+In theory the same concern could apply to $\texttt{flexsurv}$ package [@flexsurv], however, this package has been released for some years and it is unlikely that the code architecture would change sufficiently to cause issues (however, for reference $\texttt{expertsurv}$ was built  with  $\texttt{flexsurv}=\text{v}2.0$).
 
 If you run in issues, bugs or just features which you feel would be useful, please let me know (phcooney@tcd.ie) and I will investigate and update as required. 
 

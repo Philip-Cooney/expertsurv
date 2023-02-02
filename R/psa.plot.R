@@ -1,5 +1,5 @@
 #' Graphical depiction of the probabilistic sensitivity analysis for the
-#' survival curves
+#' survival curves - ported from ``survHE``
 #' 
 #' Plots the survival curves for all the PSA simulations. The function is 
 #' actually deprecated - similar graphs can be obtained directly using 
@@ -13,20 +13,37 @@
 #' colors for the lines to be plotted \code{alpha} = the level of transparency
 #' for the curves (default = 0.2)
 #' @author Gianluca Baio
-#' @template refs
-#' @seealso \code{make.surv}, \code{write.surv}
 #' @keywords Survival models Bootstrap Probabilistic sensitivity analysis
+#' @import tibble
+#' @import dplyr
+#' @import ggplot2
 #' @examples
 #' \dontrun{ 
-#' data(bc)
-#' 
-#' # Fits the same model using the 3 inference methods
-#' mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-#'     distr="exp",method="mle")
-#' p.mle = make.surv(mle,nsim=100)
-#' psa.plot(p.mle)
+#' require("dplyr")
+#'param_expert_example1 <- list()
+#'param_expert_example1[[1]] <- data.frame(dist = c("norm","t"),
+#'                                         wi = c(0.5,0.5), # Ensure Weights sum to 1
+#'                                         param1 = c(0.1,0.12),
+#'                                         param2 = c(0.15,0.5),
+#'                                         param3 = c(NA,3))
+#'
+#'timepoint_expert <- 14
+#'data2 <- data %>% rename(status = censored) %>% mutate(time2 = ifelse(time > 10, 10, time),
+#'                                                       status2 = ifelse(time> 10, 0, status))
+#'example1 <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
+#'                              distr=c("wph", "gomp"),
+#'                              method="mle",
+#'                              pool_type = "log pool",
+#'                              opinion_type = "survival",
+#'                              times_expert = timepoint_expert,
+#'                              param_expert = param_expert_example1)
+#'
+#'p.mle = make.surv(example1,mod= 2,t = 1:30, nsim=1000) #Plot the Gompertz model
+#'psa.plot(p.mle , name_labs = "PSA", labs = "Gompertz", col ="blue")
+#'
 #' }
-#' 
+#' @references 
+#' \insertRef{Baio.2020}{expertsurv}
 #' @export psa.plot
 psa.plot <- function(psa,...) {
   # Plots the survival curves for all the PSA simulations

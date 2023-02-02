@@ -40,11 +40,11 @@ make_sim_mle <- function(m,t,X,nsim,newdata,dist,summary_stat,...) {
   }
   # Then if 'nsim'=1, then take the average over the bootstrap samples. 
   if(nsim==1) {
-    sim=lapply(sim,function(x) x %>% as_tibble() %>% summarise_all(summary_stat) %>% as.matrix(.,ncol=ncol(X)))
+    sim=lapply(sim,function(x) x %>% tibble::as_tibble() %>% dplyr::summarise_all(summary_stat) %>% as.matrix(.,ncol=ncol(X)))
   } 
   # If nsim<=5000 (number of bootstrap samples), then samples only 'nsim' of them
   if(nsim>1 & nsim<nboot) {
-    sim=lapply(sim,function(x) x %>% as_tibble %>% sample_n(ifelse(nsim<nboot,nsim,B),replace=FALSE) %>% 
+    sim=lapply(sim,function(x) x %>% tibble::as_tibble() %>% dplyr::sample_n(ifelse(nsim<nboot,nsim,B),replace=FALSE) %>% 
                  as.matrix(.,nrow=nsim,ncol=ncol(X)))
   }
   return(sim)
@@ -213,7 +213,7 @@ rescale_hmc_rps <- function(m,X,linpred) {
   gamma <- rstan::extract(m)$gamma
   # If X has an intercept needs to remove it as RPS doesn't have one
   if(any(grepl("Intercept",colnames(X)))) {
-    X <- as.matrix(as_tibble(X) %>% select(-`(Intercept)`))
+    X <- as.matrix(tibble::as_tibble(X) %>% dplyr::select(-`(Intercept)`))
   }
   offset <- linpred #rstan::extract(m)$beta %*% t(X) 
   sim <- cbind(offset,gamma)
@@ -275,6 +275,7 @@ rescale.inla <- function(linpred,alpha,distr) {
 #' @param nsim The number of simulations included
 #' @param dist The abbreviated name of the underlying distribution
 #' @param t The vector of times to be used in the x-axis
+#' @import flexsurv
 #' @return \item{mat}{A matrix of simulated values for the survival curves}
 #' @author Gianluca Baio
 #' @seealso make.surv
@@ -300,7 +301,7 @@ compute_surv_curve <- function(sim,exArgs,nsim,dist,t,method,X) {
         matrix(
           unlist(
             lapply(1:nsim,function(i){
-              1-do.call(psurvspline,args=list(
+              1-do.call(flexsurv::psurvspline,args=list(
                 q=t,
                 gamma=as.numeric(gamma %>% slice(i)),
                 beta=0,
@@ -411,6 +412,11 @@ args_surv <- function() {
 #' the survival curves}.
 #' @note Something will go here
 #' @author Gianluca Baio
+#' 
+#' @import dplyr
+#' @import tibble
+#' @import stats
+#' @import tidyselect
 #' @seealso make.surv
 #' @references Baio (2020). survHE
 #' @keywords Parametric survival models
@@ -421,26 +427,27 @@ make_profile_surv <- function(formula,data,newdata) {
   n.provided <- unlist(lapply(newdata,function(x) length(x)))
   
   # Temporarily re-writes the model formula to avoid issues with naming
-  formula_temp <- update(formula,paste(all.vars(formula,data)[1],"~",all.vars(formula,data)[2],"+."))
+  formula_temp <- stats::update(formula,paste(all.vars(formula,data)[1],"~",all.vars(formula,data)[2],"+."))
   # Creates a tibble with all the covariates in their original format
-  covs <- data %>% model.frame(formula_temp,.) %>% as_tibble(.) %>%  select(-c(1:2)) %>% 
-    rename_if(is.factor,.funs=~gsub("as.factor[( )]","",.x)) %>% 
-    rename_if(is.factor,.funs=~gsub("[( )]","",.x)) %>% 
-    bind_cols(as_tibble(model.matrix(formula_temp,data)) %>% select(contains("Intercept"))) 
+  covs <- data %>% stats::model.frame(formula_temp,.) %>% tibble::as_tibble(.) %>%  dplyr::select(-c(1:2)) %>% 
+    dplyr::rename_if(is.factor,.funs=~gsub("as.factor[( )]","",.x)) %>% 
+    dplyr::rename_if(is.factor,.funs=~gsub("[( )]","",.x)) %>% 
+    dplyr::bind_cols(as_tibble(stats::model.matrix(formula_temp,data)) %>% 
+                       dplyr::select(contains("Intercept"))) 
   if("(Intercept)"%in% names(covs)) {
-    covs=covs %>% select(`(Intercept)`,everything())
+    covs=covs %>% dplyr::select(`(Intercept)`,dplyr::everything())
   }
   
   ncovs <- covs %>% select(-contains("Intercept")) %>% with(ncol(.))
   # Selects the subset of categorical covariates
-  is.fac <- covs %>% select(where(is.factor))
+  is.fac <- covs %>% select(tidyselect:::where(is.factor))
   fac.levels=lapply(is.fac,levels)
-  nfacts <- covs %>% select(where(is.factor)) %>% with(ncol(.))
+  nfacts <- covs %>% select(tidyselect:::where(is.factor)) %>% with(ncol(.))
   
   # If formula is in 'inla' terms now change it back to 'flexsurv' terms
   formula_temp <- as.formula(gsub("inla.surv","Surv",deparse(formula)))
   # Computes the "average" profile of the covariates
-  X <- data %>% model.matrix(formula_temp,.) %>% as_tibble(.) %>% summarise_all(mean) 
+  X <- data %>% stats::model.matrix(formula_temp,.) %>% as_tibble(.) %>% summarise_all(mean) 
   # If there's at least one factor with more than 2 levels, then do *not* rename the columns to the simpler version
   # which only has the name of the variable (rather than the combination, eg 'groupMedium' that R produces)
   if(all(unlist(lapply(fac.levels,length))<=2)) {colnames(X)=colnames(covs)}
@@ -450,7 +457,7 @@ make_profile_surv <- function(formula,data,newdata) {
   if(n.elements==0){
     # If all the covariates are factors, then get survival curves for *all* the combinations
     if(nfacts==ncovs & nfacts>0) {
-      X=unique(model.matrix(formula,data))
+      X=unique(stats::model.matrix(formula,data))
       # If there's at least one factor with more than 2 levels, then do *not* rename the columns to the simpler version
       # which only has the name of the variable (rather than the combination, eg 'groupMedium' that R produces)
       if(all(unlist(lapply(fac.levels,length))<2)) {colnames(X)=colnames(covs)}
@@ -477,7 +484,7 @@ make_profile_surv <- function(formula,data,newdata) {
         mutate(id=row_number()) %>% rename_if(is.factor,.funs=~gsub("as.factor[( )]","",.x)) %>% 
         rename_if(is.factor,.funs=~gsub("[( )]","",.x))
       # Now creates the 'model matrix' with the combination of all the factors
-      mm=model.matrix(formula,aug_data) %>% as_tibble() %>% mutate(id=row_number())
+      mm=stats::model.matrix(formula,aug_data) %>% as_tibble() %>% mutate(id=row_number())
       mf=suppressMessages(mf %>% right_join(nd))
       # And selects only the rows that match with the profile selected in 'newdata'
       X=as.matrix(mm %>% filter(id %in% mf$id) %>% select(-id) %>% unique,drop=FALSE)
@@ -540,7 +547,7 @@ make_surv_pw=function(fit,mod,t,newdata,nsim,exArgs) {
     # If the user requested only 1 simulation, then take the mean value
     sim=lapply(sim,function(x){
       lapply(1:length(x),function(i) {
-        as.matrix(as_tibble(x[[i]]) %>% summarise_all(mean),nrow=1,ncol=ncol(x[[i]]))
+        as.matrix(tibble::as_tibble(x[[i]]) %>% dplyr::summarise_all(mean),nrow=1,ncol=ncol(x[[i]]))
       })
     })
   }
@@ -548,7 +555,7 @@ make_surv_pw=function(fit,mod,t,newdata,nsim,exArgs) {
     # If the user selected a number of simulation < the one from rstan, then select a random sample 
     sim=lapply(sim,function(x) {
       lapply(1:length(x),function(i) {
-        as.matrix(as_tibble(x[[i]]) %>% sample_n(nsim,replace=FALSE),nrow=nsim,ncol=ncol(x[[i]]))
+        as.matrix(tibble::as_tibble(x[[i]]) %>% dplyr::sample_n(nsim,replace=FALSE),nrow=nsim,ncol=ncol(x[[i]]))
       })
     })
   }
@@ -581,11 +588,11 @@ make_surv_pw=function(fit,mod,t,newdata,nsim,exArgs) {
   })
   
   for (i in 1:length(mat)){colnames(mat[[i]])=paste0("S_",1:nsim)}
-  mat <- mat %>% lapply(function(x) bind_cols(as_tibble(t),as_tibble(x)) %>% rename(t=value))
+  mat <- mat %>% lapply(function(x) dplyr::bind_cols(tibble::as_tibble(t),tibble::as_tibble(x)) %>% dplyr::rename(t=value))
   
   # Updates the model formulae to a single one with *all* the covariates
   if(is.null(newdata)) {
-    comb.formula=update(fit$misc$formula[[1]],paste("~.+",paste(lapply(fit$misc$formula,function(i) terms(i)[[3]]),collapse="+")))
+    comb.formula=stats::update(fit$misc$formula[[1]],paste("~.+",paste(lapply(fit$misc$formula,function(i) stats::terms(i)[[3]]),collapse="+")))
     X=make_profile_surv(comb.formula,data,newdata)
   } else {
     X=matrix(0,nrow=length(mat),ncol=1);

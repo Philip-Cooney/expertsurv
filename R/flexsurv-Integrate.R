@@ -1,5 +1,23 @@
 #define_flexsurv_funcs <- function(){
 
+#' logLikFactory
+#'
+#' @param Y 
+#' @param X 
+#' @param weights 
+#' @param bhazard 
+#' @param rtrunc 
+#' @param dlist 
+#' @param inits 
+#' @param dfns 
+#' @param aux 
+#' @param mx 
+#' @param fixedpars 
+#' @param expert_opinion 
+#'
+#' @import flexsurv
+#' @importFrom abind adrop
+#' @noRd
 logLikFactory <- function (Y, X = 0, weights, bhazard, rtrunc, dlist, inits, dfns,
                            aux, mx, fixedpars = NULL, expert_opinion){
   pars <- inits
@@ -115,7 +133,7 @@ flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k =
     stop("A \"formula\" argument is required")
   temp <- call[c(1, indx)]
   temp[[1]] <- as.name("model.frame")
-  f2 <- as.formula(gsub("(.*~).*", "\\1 1", Reduce(paste, deparse(formula))))
+  f2 <- stats::as.formula(gsub("(.*~).*", "\\1 1", Reduce(paste, deparse(formula))))
   environment(f2) <- environment(formula)
   temp[["formula"]] <- f2
   if (missing(data)) 
@@ -123,7 +141,7 @@ flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k =
   if (missing(data)) 
     data <- environment(formula)
   m <- eval(temp, parent.frame())
-  Y <- flexsurv:::check.flexsurv.response(model.extract(m, "response"))
+  Y <- flexsurv:::check.flexsurv.response(stats::model.extract(m, "response"))
   dtimes <- Y[, "stop"][Y[, "status"] == 1]
   if (is.null(knots)) {
     is.wholenumber <- function(x, tol = .Machine$double.eps^0.5) abs(x - 
@@ -134,7 +152,7 @@ flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k =
       stop("k must be numeric")
     if (!is.wholenumber(k) || (k < 0)) 
       stop("number of knots \"k\" must be a non-negative integer")
-    knots <- quantile(flexsurv:::tsfn(dtimes, timescale), seq(0, 1, 
+    knots <- stats::quantile(flexsurv:::tsfn(dtimes, timescale), seq(0, 1, 
                                                    length = k + 2)[-c(1, k + 2)])
   }
   else {
@@ -185,22 +203,22 @@ flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k =
                                                           0:(nk - 1))), location = c("gamma0"), transforms = rep(c(identity), 
                                                                                                                  nk), inv.transforms = rep(c(identity), nk), inits = flexsurv:::flexsurv.splineinits)
   aux <- list(knots = knots, scale = scale, timescale = timescale)
-  dfn <- unroll.function(flexsurv:::dsurvspline, gamma = 0:(nk - 1))
-  pfn <- unroll.function(flexsurv:::psurvspline, gamma = 0:(nk - 1))
-  rfn <- unroll.function(flexsurv:::rsurvspline, gamma = 0:(nk - 1))
-  hfn <- unroll.function(flexsurv:::hsurvspline, gamma = 0:(nk - 1))
-  Hfn <- unroll.function(flexsurv:::Hsurvspline, gamma = 0:(nk - 1))
-  qfn <- unroll.function(flexsurv:::qsurvspline, gamma = 0:(nk - 1))
-  meanfn <- unroll.function(flexsurv:::mean_survspline, gamma = 0:(nk - 
+  dfn <- flexsurv::unroll.function(flexsurv::dsurvspline, gamma = 0:(nk - 1))
+  pfn <- flexsurv::unroll.function(flexsurv::psurvspline, gamma = 0:(nk - 1))
+  rfn <- flexsurv::unroll.function(flexsurv::rsurvspline, gamma = 0:(nk - 1))
+  hfn <- flexsurv::unroll.function(flexsurv::hsurvspline, gamma = 0:(nk - 1))
+  Hfn <- flexsurv::unroll.function(flexsurv::Hsurvspline, gamma = 0:(nk - 1))
+  qfn <- flexsurv::unroll.function(flexsurv::qsurvspline, gamma = 0:(nk - 1))
+  meanfn <- flexsurv::unroll.function(flexsurv::mean_survspline, gamma = 0:(nk - 
                                                           1))
-  rmstfn <- unroll.function(flexsurv:::rmst_survspline, gamma = 0:(nk - 
+  rmstfn <- flexsurv::unroll.function(flexsurv::rmst_survspline, gamma = 0:(nk - 
                                                           1))
   Ddfn <- if (scale == "normal") 
     NULL
-  else unroll.function(flexsurv:::DLdsurvspline, gamma = 0:(nk - 1))
+  else flexsurv::unroll.function(flexsurv:::DLdsurvspline, gamma = 0:(nk - 1))
   DSfn <- if (scale == "normal") 
     NULL
-  else unroll.function(flexsurv:::DLSsurvspline, gamma = 0:(nk - 1))
+  else flexsurv::unroll.function(flexsurv:::DLSsurvspline, gamma = 0:(nk - 1))
   args <- c(list(formula = formula, data = data, dist = custom.fss, 
                  dfns = list(d = dfn, p = pfn, r = rfn, h = hfn, H = Hfn, 
                              rmst = rmstfn, mean = meanfn, q = qfn, DLd = Ddfn, 
@@ -237,7 +255,7 @@ flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k =
 
 flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
                          subset, na.action, dist, inits, fixedpars = NULL, dfns = NULL,
-                         aux = NULL, cl = 0.95, integ.opts = NULL, sr.control = survreg.control(),
+                         aux = NULL, cl = 0.95, integ.opts = NULL, sr.control = survival::survreg.control(),
                          hessian = TRUE, hess.control = NULL, expert_opinion = NULL, ...){
   
   call <- match.call()
@@ -267,23 +285,23 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
   attr(m, "covnames") <- attr(f2, "covnames")
   attr(m, "covnames.orig") <- intersect(colnames(m),
                                         attr(f2, "covnames.orig"))
-  Y <- flexsurv:::check.flexsurv.response(model.extract(m, "response"))
+  Y <- flexsurv:::check.flexsurv.response(stats::model.extract(m, "response"))
   mml <- mx <- vector(mode = "list", length = length(dlist$pars))
   names(mml) <- names(mx) <- c(dlist$location, setdiff(dlist$pars,
                                                        dlist$location))
   for (i in names(forms)) {
-    mml[[i]] <- model.matrix(forms[[i]], m)
+    mml[[i]] <- stats::model.matrix(forms[[i]], m)
     mx[[i]] <- length(unlist(mx)) + seq_len(ncol(mml[[i]][,
                                                           -1, drop = FALSE]))
   }
   X <- flexsurv:::compress.model.matrices(mml)
-  weights <- model.extract(m, "weights")
+  weights <- stats::model.extract(m, "weights")
   if (is.null(weights))
     weights <- m$"(weights)" <- rep(1, nrow(X))
-  bhazard <- model.extract(m, "bhazard")
+  bhazard <- stats::model.extract(m, "bhazard")
   if (is.null(bhazard))
     bhazard <- rep(0, nrow(X))
-  rtrunc <- model.extract(m, "rtrunc")
+  rtrunc <- stats::model.extract(m, "rtrunc")
   if (is.null(rtrunc))
     rtrunc <- rep(Inf, nrow(X))
   dat <- list(Y = Y, m = m, mml = mml)
@@ -300,7 +318,7 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
     wt <- yy * weights * length(yy)/sum(weights)
     dlist$inits <- flexsurv:::expand.inits.args(dlist$inits)
     inits.aux <- c(aux, list(forms = forms, data = if (missing(data)) NULL else data,
-                             weights = temp$weights, control = sr.control, counting = (attr(model.extract(m,
+                             weights = temp$weights, control = sr.control, counting = (attr(stats::model.extract(m,
                                                                                                           "response"), "type") == "counting")))
     auto.inits <- dlist$inits(t = wt, mf = m, mml = mml,
                               aux = inits.aux)
@@ -381,8 +399,8 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
       if (!is.numeric(cl) || length(cl) > 1 || !(cl > 0) ||
           !(cl < 1))
         stop("cl must be a number in (0,1)")
-      lcl <- est - qnorm(1 - (1 - cl)/2) * se
-      ucl <- est + qnorm(1 - (1 - cl)/2) * se
+      lcl <- est - stats::qnorm(1 - (1 - cl)/2) * se
+      ucl <- est + stats::qnorm(1 - (1 - cl)/2) * se
     }
     else {
       if (hessian)
@@ -401,7 +419,7 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
         res[i, "se"] <- exp(res.t[i, "est"]) *
           res.t[i, "se"]
       else if (identical(body(dlist$transforms[[i]]), body(flexsurv:::logh)))
-        res[i, "se"] <- dexph(res.t[i, "est"]) *
+        res[i, "se"] <- flexsurv:::dexph(res.t[i, "est"]) *
           res.t[i, "se"]
       else if (!identical(dlist$transforms[[i]], identity))
         res[i, "se"] <- NA
@@ -495,36 +513,6 @@ make_data_expert <- function(param_expert, times_expert = NULL){
   
 }
 
-
-# tmpfun <- get("logLikFactory", envir = asNamespace("flexsurv"))
-# environment(logLikFactory) <- environment(tmpfun)
-# attributes(logLikFactory) <- attributes(tmpfun)
-# assignInNamespace("logLikFactory", logLikFactory, ns="flexsurv")
-# 
-# 
-# tmpfun <- get("flexsurvreg", envir = asNamespace("flexsurv"))
-# environment(flexsurvreg) <- environment(tmpfun)
-# attributes(flexsurvreg) <- attributes(tmpfun)
-# assignInNamespace("flexsurvreg", flexsurvreg, ns="flexsurv")
-# 
-# tmpfun <- get("minusloglik.flexsurv", envir = asNamespace("flexsurv"))
-# environment(minusloglik.flexsurv) <- environment(tmpfun)
-# attributes(minusloglik.flexsurv) <- attributes(tmpfun)
-# assignInNamespace("minusloglik.flexsurv", minusloglik.flexsurv, ns="flexsurv")
-# 
-# tmpfun <- get("flexsurvspline", envir = asNamespace("flexsurv"))
-# environment(flexsurvspline) <- environment(tmpfun)
-# attributes(flexsurvspline) <- attributes(tmpfun)
-# assignInNamespace("flexsurvspline", minusloglik.flexsurv, ns="flexsurv")
-
-#Ensure functions are no longer in Global environment
-# rm(flexsurvspline)
-# rm(minusloglik.flexsurv)
-# rm(flexsurvreg)
-# rm(logLikFactory)                             
-# 
-# }
-                             
 gen_pathway<- function(string){
   folder_bits <- strsplit(string, "\\/")[[1]]
   
@@ -609,6 +597,10 @@ get_k_norm <- function(opinion_list, St_indic = 1){ # Only required if log-pooli
 #' @seealso fit.models
 #' @references Baio (2020). survHE
 #' @keywords Parametric survival models Maximum likelihood estimation
+#' @import tibble
+#' @import dplyr
+#' @import stats 
+#' @import flexsurv
 #' @noRd 
 runMLE <- function (x, exArgs){
   #browser()
@@ -628,10 +620,10 @@ runMLE <- function (x, exArgs){
   
   formula_temp <- update(formula, paste(all.vars(formula, data)[1], 
                                         "~", all.vars(formula, data)[2], "+."))
-  mf <- as_tibble(model.frame(formula_temp, data)) %>% 
+  mf <- tibble::as_tibble(model.frame(formula_temp, data)) %>% 
     dplyr::rename(time = 1,event = 2) %>% rename_if(is.factor, .funs = ~gsub("as.factor[( )]","", .x)) %>% 
     dplyr::rename_if(is.factor, .funs = ~gsub("[( )]","", .x)) %>% 
-    bind_cols(as_tibble(model.matrix(formula_temp,data)) %>% dplyr::select(contains("Intercept"))) %>%
+    dplyr::bind_cols(tibble::as_tibble(stats::model.matrix(formula_temp,data)) %>% dplyr::select(contains("Intercept"))) %>%
     dplyr::select(time,event, contains("Intercept"), everything()) %>% tibble::rownames_to_column("ID")
   
  if(ncol(mf) == 5){

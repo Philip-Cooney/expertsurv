@@ -21,10 +21,9 @@ Biarch: true
 Depends: 
     R (>= 3.4.0),
     Rcpp (>= 0.12.19),
-    flexsurv (>= 2.0),
-    dplyr,
-    ggplot2
+    survival
 Imports: 
+    Rdpack,
     methods,
     stats,
     Rcpp (>= 0.12.0),
@@ -35,7 +34,14 @@ Imports:
     tibble,
     SHELF,
     stringr,
-    rms
+    rms,
+    flexsurv (>= 2.0),
+    dplyr,
+    ggplot2,
+    abind,
+    loo,
+    tidyselect,
+    scales
 LinkingTo: 
     BH (>= 1.66.0),
     Rcpp (>= 0.12.0),
@@ -48,5 +54,8 @@ Suggests:
     rmarkdown,
     knitr,
     rjags,
-    R2jags
+    R2jags,
+    xlsx
 VignetteBuilder: knitr
+RdMacros: Rdpack
+

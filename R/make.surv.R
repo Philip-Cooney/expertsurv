@@ -1,6 +1,6 @@
 #' Engine for Probabilistic Sensitivity Analysis on the survival curves
 #' 
-#' Creates the survival curves for the fitted model(s)
+#' Creates the survival curves for the fitted model(s) - Original code from ``survHE``
 #' 
 #' 
 #' @param fit the result of the call to the \code{fit.models} function,
@@ -26,24 +26,10 @@
 #' curve
 #' @param ...  Additional options
 #' @author Gianluca Baio
-#' @seealso \code{fit.models}, \code{psa.plot}, \code{write.surv}
-#' @template refs
+#' @seealso  \code{psa.plot} (for example)
 #' @keywords Survival models Bootstrap Probabilistic sensitivity analysis
-#' @examples
-#' \dontrun{ 
-#' # Loads an example dataset from 'flexsurv'
-#' data(bc)
-#' 
-#' # Fits the same model using the 3 inference methods
-#' mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-#'     distr="exp",method="mle")
-#' p.mle = make.surv(mle)
-#' psa.plot(p.mle)
-#' # Can also use the main 'plot' function to visualise the survival curves
-#' # and include uncertainty by using a number 'nsim' of simulations
-#' plot(mle,nsim=10)
-#' }
-#' 
+#' @references 
+#' \insertRef{Baio.2020}{expertsurv}
 #' @export make.surv
 make.surv <- function(fit,mod=1,t=NULL,newdata=NULL,nsim=1,...) {
   ## Creates the survival curves for the fitted model(s)

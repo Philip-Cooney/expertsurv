@@ -32,18 +32,41 @@
 #' may be other arguments that can be added (using 'ggplot' facilities)
 #' @author Gianluca Baio
 #' @seealso \code{fit.models}, \code{write.surv}
-#' @template refs
 #' @keywords Parametric survival models
 #' @examples
 #' \dontrun{
-#' data(bc)
+#' require("dplyr")
+#' param_expert_example1 <- list()
+#' param_expert_example1[[1]] <- data.frame(dist = c("norm","t"),
+#'                                          wi = c(0.5,0.5), # Ensure Weights sum to 1
+#'                                          param1 = c(0.1,0.12),
+#'                                          param2 = c(0.15,0.5),
+#'                                          param3 = c(NA,3))
 #' 
-#' mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-#'     distr="exp",method="mle")
-#' inla = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-#'     distr="exp",method="inla")
-#' plot(MLE=mle,INLA=inla)
+#' timepoint_expert <- 14
+#' data2 <- data %>% rename(status = censored) %>% mutate(time2 = ifelse(time > 10, 10, time),
+#'                                                        status2 = ifelse(time> 10, 0, status))
+#' example1_mle <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
+#'                                   distr=c("wph", "gomp"),
+#'                                   method="mle",
+#'                                   pool_type = "log pool",
+#'                                  opinion_type = "survival",
+#'                                   times_expert = timepoint_expert,
+#'                                   param_expert = param_expert_example1)
+#' 
+#' example1_bayes <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
+#'                                     distr=c("wph", "gomp"),
+#'                                     method="hmc",
+#'                                     pool_type = "log pool",
+#'                                     opinion_type = "survival",
+#'                                     times_expert = timepoint_expert,
+#'                                     param_expert = param_expert_example1)
+#' 
+#' plot(MLE=example1_mle,Bayesian=example1_bayes, add.km = T, t = 0:30)
 #' }
+#' @references 
+#' \insertRef{Baio.2020}{expertsurv}
+#' 
 #' @exportS3Method plot
 #' @export plot.expertsurv
 plot.expertsurv <- function(...) {

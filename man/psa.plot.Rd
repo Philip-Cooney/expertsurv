@@ -3,7 +3,7 @@
 \name{psa.plot}
 \alias{psa.plot}
 \title{Graphical depiction of the probabilistic sensitivity analysis for the
-survival curves}
+survival curves - ported from \code{survHE}}
 \usage{
 psa.plot(psa, ...)
 }
@@ -23,21 +23,32 @@ of the results.
 }
 \examples{
 \dontrun{ 
-data(bc)
+require("dplyr")
+param_expert_example1 <- list()
+param_expert_example1[[1]] <- data.frame(dist = c("norm","t"),
+                                        wi = c(0.5,0.5), # Ensure Weights sum to 1
+                                        param1 = c(0.1,0.12),
+                                        param2 = c(0.15,0.5),
+                                        param3 = c(NA,3))
 
-# Fits the same model using the 3 inference methods
-mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-    distr="exp",method="mle")
-p.mle = make.surv(mle,nsim=100)
-psa.plot(p.mle)
+timepoint_expert <- 14
+data2 <- data \%>\% rename(status = censored) \%>\% mutate(time2 = ifelse(time > 10, 10, time),
+                                                      status2 = ifelse(time> 10, 0, status))
+example1 <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
+                             distr=c("wph", "gomp"),
+                             method="mle",
+                             pool_type = "log pool",
+                             opinion_type = "survival",
+                             times_expert = timepoint_expert,
+                             param_expert = param_expert_example1)
+
+p.mle = make.surv(example1,mod= 2,t = 1:30, nsim=1000) #Plot the Gompertz model
+psa.plot(p.mle , name_labs = "PSA", labs = "Gompertz", col ="blue")
+
 }
-
 }
 \references{
-P Cooney (2023). expertsurv: Incorporating expert opinion into parametric survival models
-}
-\seealso{
-\code{make.surv}, \code{write.surv}
+\insertRef{Baio.2020}{expertsurv}
 }
 \author{
 Gianluca Baio

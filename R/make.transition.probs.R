@@ -21,8 +21,7 @@
 #' \dontrun{
 #' # Something will go here
 #' }
-#' 
-#' @export make.transition.probs
+#' @noRd
 make.transition.probs <- function(x,...) {
   # Computes the transition probabilities (to feed a discrete-time Markov model), based on the output of make.surv
   # Uses the formula p(t)=1-S(t+k)/S(t) where k is the MM cycle length and t is a generic time

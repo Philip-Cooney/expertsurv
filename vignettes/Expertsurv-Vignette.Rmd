@@ -12,13 +12,12 @@ vignette: >
 ```{r, include = FALSE,echo = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
-)
-options(rmarkdown.html_vignette.check_title = FALSE)
-```
-
-```{r setup, include = FALSE}
+  comment = "#>")
 library("expertsurv")
+
+options(rmarkdown.html_vignette.check_title = FALSE)
+
+
 ```
 
 
@@ -31,15 +30,6 @@ The goal of $\texttt{expertsurv}$ is to incorporate expert opinion into an analy
 
 
 The key function is `fit.models.expert` and operates almost identically to the `fit.models` function of $\texttt{survHE}$.
-
-
-<!-- ## Installation -->
-
-<!-- You can install the released version of expertsurv from [GitHub](https://github.com/Philip-Cooney/expertsurv) with: -->
-
-<!-- ``` r -->
-<!-- devtools::install_github("Philip-Cooney/expertsurv") -->
-<!-- ``` -->
 
 
 
@@ -73,10 +63,11 @@ param_expert_example1
 
 timepoint_expert <- 14
 
-#In case we wanted a second timepoint -- Just for illustration (Uncomment the code)
+
+#In case we wanted a second timepoint -- Just for illustration
 
 # param_expert_example1[[2]] <- data.frame(dist = c("norm","norm"),
-#                                          wi = c(0.5,0.5),
+#                                          wi = c(1,1),
 #                                          param1 = c(0.05,0.045),
 #                                          param2 = c(0.005,0.005),
 #                                          param3 = c(NA,NA))
@@ -101,6 +92,7 @@ credible interval between $9.0−11.9\%$ calculated with the function below:
 
 ```{r echo = FALSE, fig.cap = "Expert prior distributions", out.width="100%"}
 knitr::include_graphics("plots/Vignette_Example_1_Expert_Opinion.png")
+
 ```
 
 ```
@@ -160,11 +152,10 @@ We find that the AIC values also favour the Gompertz model by a large factor (no
 
 
 <!-- ```{r echo = FALSE, fig.cap = "Survival function with Expert Information-Penalized Maximum Likelihood"} -->
-<!-- knitr::include_graphics("plots/MLE-Weibull-Gomp.png") -->
+<!-- knitr::include_graphics("inst/image/MLE-Weibull-Gomp.png") -->
 <!-- ``` -->
 
 $\texttt{expertsurv}$ modifies some of the $\texttt{flexsurv}$ functions, so if you wish to use revert to the original $\texttt{flexsurv}$ functions within the same session you should run the following commands:
-
 
 ```
     unloadNamespace("flexsurv") #Unload flexsurv and associated name spaces
@@ -250,7 +241,7 @@ knitr::include_graphics("plots/Vignette_Example_3.png")
 As stated in the introduction this package relies on many  of the core functions of the $\texttt{survHE}$ package [@Baio.2020]. Because we do not not implement expert opinion with INLA and because future versions of $\texttt{survHE}$ may introduce conflicts with the current implementation, we have directly ported the key functions from $\texttt{survHE}$ into the package so that $\texttt{expertsurv}$ no longer imports $\texttt{survHE}$ (of course all credit for those functions goes to [@Baio.2020] and co-authors).
 
 
-In theory the same concern could apply to $\texttt{flexsurv}$ package [flexsurv], however, this package has been released for some years and it is unlikely that the code architecture would change sufficiently to cause issues (however, for reference $\texttt{expertsurv}$ was built  with  $\texttt{flexsurv}=\text{v}2.0$).
+In theory the same concern could apply to $\texttt{flexsurv}$ package [@flexsurv], however, this package has been released for some years and it is unlikely that the code architecture would change sufficiently to cause issues (however, for reference $\texttt{expertsurv}$ was built  with  $\texttt{flexsurv}=\text{v}2.0$).
 
 If you run in issues, bugs or just features which you feel would be useful, please let me know (phcooney@tcd.ie) and I will investigate and update as required. 
 
@@ -263,7 +254,6 @@ require("flexsurv") #reload flexsurv
 
 
 ```
-
 Care should be taken, however to ensure the packages were successfully unloaded as other packages which require  $\texttt{flexsurv}$ can block the unloading to that package (which will cause an error).
 
 

@@ -14,7 +14,7 @@ cred_int(plt_obj, val = "linear pool", interval = c(0.025, 0.975))
 \item{interval}{A vector of the upper and lower probabilities. Default is the standard 95\% interval}
 }
 \value{
-
+Credible interval based on the pooled distribution
 }
 \description{
 Returns the interval based on defined quantiles.
@@ -22,8 +22,17 @@ The approach used only provides an approximate (although quite accurate) integra
 }
 \examples{
 \dontrun{
+param_expert_example1 <- list()
+param_expert_example1[[1]] <- data.frame(dist = c("norm","t"),
+    wi = c(0.5,0.5), # Ensure Weights sum to 1
+    param1 = c(0.1,0.12),
+    param2 = c(0.005,0.005),
+    param3 = c(NA,3))
+plot_opinion1<- plot_expert_opinion(param_expert_example1[[1]], 
+              weights = param_expert_example1[[1]]$wi)
 cred_int(plot_opinion1,val = "linear pool", interval = c(0.025, 0.975))
 }
 
 
 }
+\keyword{Expert}

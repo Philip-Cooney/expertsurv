@@ -1,9 +1,9 @@
 #' write.surv
 #' 
 #' Writes the survival summary to an excel file (helpful to then call the
-#' values in the Markov model)
+#' values in the Markov model) - ported from ``survHE``
 #' 
-#' Something will go here
+#' 
 #' 
 #' @param object a summary.flexsurvreg object containing the survival curves
 #' (with times, estimates and interval limits)
@@ -15,6 +15,8 @@
 #' parameters. If there are several 'profiles', they get written in 
 #' separate spreadsheets and a clear indication is given as the name of the
 #' spreadsheet
+#' @import dplyr
+#' @import xlsx
 #' @return A spreadsheet file with the simulation(s) of the relevant quantity
 #' @author Gianluca Baio
 #' @seealso \code{make.surv}
@@ -22,15 +24,30 @@
 #' @keywords Excel PSA
 #' @examples
 #' \dontrun{
-#' # Loads an example dataset from 'flexsurv'
-#' data(bc)
-#' 
-#' # Fits the same model using the 3 inference methods
-#' mle = fit.models(formula=Surv(recyrs,censrec)~group,data=bc,
-#'     distr="exp",method="mle")
-#' p.mle = make.surv(mle)
-#' write.surv(p.mle,file="test.xlsx")
+#' require("dplyr")
+#' param_expert_example1 <- list()
+#'param_expert_example1[[1]] <- data.frame(dist = c("norm","t"),
+#'                                         wi = c(0.5,0.5), # Ensure Weights sum to 1
+#'                                         param1 = c(0.1,0.12),
+#'                                         param2 = c(0.15,0.5),
+#'                                         param3 = c(NA,3))
+#'
+#'timepoint_expert <- 14
+#'data2 <- data %>% rename(status = censored) %>% mutate(time2 = ifelse(time > 10, 10, time),
+#'                                                       status2 = ifelse(time> 10, 0, status))
+#'example1 <- fit.models.expert(formula=Surv(time2,status2)~1,data=data2,
+#'                              distr=c("wph", "gomp"),
+#'                              method="mle",
+#'                              pool_type = "log pool",
+#'                              opinion_type = "survival",
+#'                              times_expert = timepoint_expert,
+#'                              param_expert = param_expert_example1)
+#'
+#'p.mle = make.surv(example1,mod= 2,t = 1:30, nsim=1000) #Plot the Gompertz model
+#'write.surv(p.mle,file="test.xlsx")
 #' }
+#' @references 
+#' \insertRef{Baio.2020}{expertsurv}
 #' @export write.surv
 write.surv <- function(object,file,sheet=NULL,what="surv") {
   # Writes the survival summary to an excel file (helpful to then call the values in the Markov model)

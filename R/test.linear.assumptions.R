@@ -10,8 +10,7 @@
 #' @return A diagnostic plot
 #' @author William Browne
 #' @keywords survival hplot
-#' @export test.linear.assumptions
-#' @noRd 
+#' @noRd
 test.linear.assumptions <- function(fit, mod = 1, label_plot = FALSE, ...) {
   ## THIS IS INTERESTING, BUT NEEDS TO COMPLETE WITH THE OTHER DISTRIBUTIONS!!!
   
@@ -67,7 +66,7 @@ test.linear.assumptions <- function(fit, mod = 1, label_plot = FALSE, ...) {
     axes <- FALSE
     legend_text <- "lognormal distributional assumption"
     x <- times
-    y <- lapply(survs, function(x) qnorm(1 - x))
+    y <- lapply(survs, function(x) stats::qnorm(1 - x))
   }
   
   if (dist == "gompertz") {
@@ -104,18 +103,18 @@ test.linear.assumptions <- function(fit, mod = 1, label_plot = FALSE, ...) {
        xlim = range(pretty(unlist(x))),
        ylim = range(pretty(unlist(y))))
   
-  axis(1)
-  axis(2)
+  graphics::axis(1)
+  graphics::axis(2)
   
   lapply(1:length(pts),
          function(x)
-           points(pts[[x]],
+           graphics::points(pts[[x]],
                   t = "l",
                   lty = x,
                   ...))
   
   if (isTRUE(label_plot)) {
-    legend("topright", legend_text, bty = "n")
+    graphics::legend("topright", legend_text, bty = "n")
   }
   
   return(invisible())
