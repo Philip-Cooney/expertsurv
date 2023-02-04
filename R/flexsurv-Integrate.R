@@ -1,4 +1,5 @@
-#define_flexsurv_funcs <- function(){
+
+.hess_to_cov<-utils::getFromNamespace(".hess_to_cov", "flexsurv")
 
 #' logLikFactory
 #'
@@ -20,6 +21,31 @@
 #' @noRd
 logLikFactory <- function (Y, X = 0, weights, bhazard, rtrunc, dlist, inits, dfns,
                            aux, mx, fixedpars = NULL, expert_opinion){
+  
+  
+  
+  #NAMESPACE HACK FOR CRAN; won't let me use flexsurv::: :-(
+  
+  buildTransformer <-utils::getFromNamespace("buildTransformer", "flexsurv")
+  buildAuxParms <-utils::getFromNamespace("buildAuxParms", "flexsurv")
+  check.flexsurv.response <-utils::getFromNamespace("check.flexsurv.response", "flexsurv")
+  tsfn <-utils::getFromNamespace("tsfn", "flexsurv")
+  DLdsurvspline <-utils::getFromNamespace("DLdsurvspline", "flexsurv")
+  flexsurv.splineinits.cox <-utils::getFromNamespace("flexsurv.splineinits.cox", "flexsurv")
+  parse.dist <-utils::getFromNamespace("parse.dist", "flexsurv")
+  form.dp<-utils::getFromNamespace("form.dp", "flexsurv")
+  check.formula<-utils::getFromNamespace("check.formula", "flexsurv")
+  anc_from_formula<-utils::getFromNamespace("anc_from_formula", "flexsurv")
+  get.locform<-utils::getFromNamespace("get.locform", "flexsurv")
+  concat.formulae<-utils::getFromNamespace("concat.formulae", "flexsurv")
+  compress.model.matrices<-utils::getFromNamespace("compress.model.matrices", "flexsurv")
+  expand.inits.args<-utils::getFromNamespace("expand.inits.args", "flexsurv")
+  .hess_to_cov<-utils::getFromNamespace(".hess_to_cov", "flexsurv")
+  logh<-utils::getFromNamespace("logh", "flexsurv")
+  dexph<-utils::getFromNamespace("dexph", "flexsurv")
+  deriv.test<-utils::getFromNamespace("deriv.test", "flexsurv")
+  
+  
   pars <- inits
   npars <- length(pars)
   nbpars <- length(dlist$pars)
@@ -30,8 +56,8 @@ logLikFactory <- function (Y, X = 0, weights, bhazard, rtrunc, dlist, inits, dfn
   right.censor <- Y[!event, "time1"]
   event.weights <- weights[event]
   no.event.weights <- weights[!event]
-  par.transform <- flexsurv:::buildTransformer(inits, nbpars, dlist)
-  aux.pars <- flexsurv:::buildAuxParms(aux, dlist)
+  par.transform <- buildTransformer(inits, nbpars, dlist)
+  aux.pars <- buildAuxParms(aux, dlist)
   default.offset <- rep.int(0, length(event.times))
   do.hazard <- any(bhazard > 0)
   loglik <- rep.int(0, nrow(Y))
@@ -126,6 +152,32 @@ logLikFactory <- function (Y, X = 0, weights, bhazard, rtrunc, dlist, inits, dfn
 flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k = 0, 
           knots = NULL, bknots = NULL, scale = "hazard", timescale = "log", expert_opinion =NULL,
           ...){
+  
+  #NAMESPACE HACK FOR CRAN; won't let me use flexsurv::: :-(
+  
+  buildTransformer <-utils::getFromNamespace("buildTransformer", "flexsurv")
+  buildAuxParms <-utils::getFromNamespace("buildAuxParms", "flexsurv")
+  check.flexsurv.response <-utils::getFromNamespace("check.flexsurv.response", "flexsurv")
+  tsfn <-utils::getFromNamespace("tsfn", "flexsurv")
+  DLdsurvspline <-utils::getFromNamespace("DLdsurvspline", "flexsurv")
+  flexsurv.splineinits.cox <-utils::getFromNamespace("flexsurv.splineinits.cox", "flexsurv")
+  flexsurv.splineinits <-utils::getFromNamespace("flexsurv.splineinits", "flexsurv")
+  parse.dist <-utils::getFromNamespace("parse.dist", "flexsurv")
+  form.dp<-utils::getFromNamespace("form.dp", "flexsurv")
+  check.formula<-utils::getFromNamespace("check.formula", "flexsurv")
+  anc_from_formula<-utils::getFromNamespace("anc_from_formula", "flexsurv")
+  get.locform<-utils::getFromNamespace("get.locform", "flexsurv")
+  concat.formulae<-utils::getFromNamespace("concat.formulae", "flexsurv")
+  compress.model.matrices<-utils::getFromNamespace("compress.model.matrices", "flexsurv")
+  expand.inits.args<-utils::getFromNamespace("expand.inits.args", "flexsurv")
+  .hess_to_cov<-utils::getFromNamespace(".hess_to_cov", "flexsurv")
+  logh<-utils::getFromNamespace("logh", "flexsurv")
+  dexph<-utils::getFromNamespace("dexph", "flexsurv")
+  deriv.test<-utils::getFromNamespace("DLSsurvspline ", "flexsurv")
+  DLSsurvspline <-utils::getFromNamespace("deriv.test", "flexsurv")
+  
+  
+  
   call <- match.call()
   indx <- match(c("formula", "data", "weights", "bhazard", 
                   "rtrunc", "subset", "na.action"), names(call), nomatch = 0)
@@ -141,7 +193,7 @@ flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k =
   if (missing(data)) 
     data <- environment(formula)
   m <- eval(temp, parent.frame())
-  Y <- flexsurv:::check.flexsurv.response(stats::model.extract(m, "response"))
+  Y <- check.flexsurv.response(stats::model.extract(m, "response"))
   dtimes <- Y[, "stop"][Y[, "status"] == 1]
   if (is.null(knots)) {
     is.wholenumber <- function(x, tol = .Machine$double.eps^0.5) abs(x - 
@@ -152,15 +204,15 @@ flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k =
       stop("k must be numeric")
     if (!is.wholenumber(k) || (k < 0)) 
       stop("number of knots \"k\" must be a non-negative integer")
-    knots <- stats::quantile(flexsurv:::tsfn(dtimes, timescale), seq(0, 1, 
+    knots <- stats::quantile(tsfn(dtimes, timescale), seq(0, 1, 
                                                    length = k + 2)[-c(1, k + 2)])
   }
   else {
     if (!is.numeric(knots)) 
       stop("\"knots\" must be a numeric vector")
-    minlogtime <- min(flexsurv:::tsfn(Y[, "stop"], timescale))
+    minlogtime <- min(tsfn(Y[, "stop"], timescale))
     if (any(knots <= minlogtime)) {
-      badknots <- knots[knots < min(flexsurv:::tsfn(Y[, "stop"], timescale))]
+      badknots <- knots[knots < min(tsfn(Y[, "stop"], timescale))]
       plural <- if (length(badknots) > 1) 
         "s"
       else ""
@@ -170,7 +222,7 @@ flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k =
                      "log "
                      else "")))
     }
-    maxlogtime <- max(flexsurv:::tsfn(Y[, "stop"], timescale))
+    maxlogtime <- max(tsfn(Y[, "stop"], timescale))
     if (any(knots >= maxlogtime)) {
       badknots <- knots[knots > maxlogtime]
       plural <- if (length(badknots) > 1) 
@@ -191,7 +243,7 @@ flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k =
       bt <- c(Y[, "time1"], Y[, "time2"], Y[, "time"])
       bt <- bt[is.finite(bt)]
     }
-    bknots <- c(min(flexsurv:::tsfn(bt, timescale)), max(flexsurv:::tsfn(bt, timescale)))
+    bknots <- c(min(tsfn(bt, timescale)), max(tsfn(bt, timescale)))
     if (bknots[1] == bknots[2]) 
       warning("minimum and maximum log death times are the same: knot and boundary knot locations should be supplied explicitly")
   }
@@ -201,7 +253,7 @@ flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k =
   nk <- length(knots)
   custom.fss <- list(name = "survspline", pars = c(paste0("gamma", 
                                                           0:(nk - 1))), location = c("gamma0"), transforms = rep(c(identity), 
-                                                                                                                 nk), inv.transforms = rep(c(identity), nk), inits = flexsurv:::flexsurv.splineinits)
+                                                                                                                 nk), inv.transforms = rep(c(identity), nk), inits = flexsurv.splineinits)
   aux <- list(knots = knots, scale = scale, timescale = timescale)
   dfn <- flexsurv::unroll.function(flexsurv::dsurvspline, gamma = 0:(nk - 1))
   pfn <- flexsurv::unroll.function(flexsurv::psurvspline, gamma = 0:(nk - 1))
@@ -215,10 +267,10 @@ flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k =
                                                           1))
   Ddfn <- if (scale == "normal") 
     NULL
-  else flexsurv::unroll.function(flexsurv:::DLdsurvspline, gamma = 0:(nk - 1))
+  else flexsurv::unroll.function(DLdsurvspline, gamma = 0:(nk - 1))
   DSfn <- if (scale == "normal") 
     NULL
-  else flexsurv::unroll.function(flexsurv:::DLSsurvspline, gamma = 0:(nk - 1))
+  else flexsurv::unroll.function(DLSsurvspline, gamma = 0:(nk - 1))
   args <- c(list(formula = formula, data = data, dist = custom.fss, 
                  dfns = list(d = dfn, p = pfn, r = rfn, h = hfn, H = Hfn, 
                              rmst = rmstfn, mean = meanfn, q = qfn, DLd = Ddfn, 
@@ -241,7 +293,7 @@ flexsurvspline <- function (formula, data, weights, bhazard, rtrunc, subset, k =
 
   #browser()
   if (is.infinite(do.call("flexsurvreg", args)$loglik)) {
-    args$dist$inits <- flexsurv:::flexsurv.splineinits.cox
+    args$dist$inits <- flexsurv.splineinits.cox
   }
   args$fixedpars <- fpold
   #browser()
@@ -258,16 +310,39 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
                          aux = NULL, cl = 0.95, integ.opts = NULL, sr.control = survival::survreg.control(),
                          hessian = TRUE, hess.control = NULL, expert_opinion = NULL, ...){
   
+  #NAMESPACE HACK FOR CRAN; won't let me use flexsurv::: :-(
+  
+  buildTransformer <-utils::getFromNamespace("buildTransformer", "flexsurv")
+  buildAuxParms <-utils::getFromNamespace("buildAuxParms", "flexsurv")
+  check.flexsurv.response <-utils::getFromNamespace("check.flexsurv.response", "flexsurv")
+  tsfn <-utils::getFromNamespace("tsfn", "flexsurv")
+  DLdsurvspline <-utils::getFromNamespace("DLdsurvspline", "flexsurv")
+  flexsurv.splineinits.cox <-utils::getFromNamespace("flexsurv.splineinits.cox", "flexsurv")
+  parse.dist <-utils::getFromNamespace("parse.dist", "flexsurv")
+  form.dp<-utils::getFromNamespace("form.dp", "flexsurv")
+  check.formula<-utils::getFromNamespace("check.formula", "flexsurv")
+  anc_from_formula<-utils::getFromNamespace("anc_from_formula", "flexsurv")
+  get.locform<-utils::getFromNamespace("get.locform", "flexsurv")
+  concat.formulae<-utils::getFromNamespace("concat.formulae", "flexsurv")
+  compress.model.matrices<-utils::getFromNamespace("compress.model.matrices", "flexsurv")
+  expand.inits.args<-utils::getFromNamespace("expand.inits.args", "flexsurv")
+  .hess_to_cov<-utils::getFromNamespace(".hess_to_cov", "flexsurv")
+  logh<-utils::getFromNamespace("logh", "flexsurv")
+  dexph<-utils::getFromNamespace("dexph", "flexsurv")
+  deriv.test<-utils::getFromNamespace("deriv.test", "flexsurv")
+  check.fixedpars<-utils::getFromNamespace("check.fixedpars", "flexsurv")
+  
+  
   call <- match.call()
   if (missing(dist))
     stop("Distribution \"dist\" not specified")
-  dlist <- flexsurv:::parse.dist(dist)
-  dfns <- flexsurv:::form.dp(dlist, dfns, integ.opts)
+  dlist <- parse.dist(dist)
+  dfns <- form.dp(dlist, dfns, integ.opts)
   parnames <- dlist$pars
-  flexsurv:::check.formula(formula, dlist)
-  anc <- flexsurv:::anc_from_formula(formula, anc, dlist)
+  check.formula(formula, dlist)
+  anc <- anc_from_formula(formula, anc, dlist)
   ancnames <- setdiff(parnames, dlist$location)
-  forms <- c(location = flexsurv:::get.locform(formula, ancnames), anc)
+  forms <- c(location = get.locform(formula, ancnames), anc)
   names(forms)[[1]] <- dlist$location
   indx <- match(c("formula", "data", "weights",
                   "bhazard", "rtrunc", "subset", "na.action"),
@@ -276,7 +351,7 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
     stop("A \"formula\" argument is required")
   temp <- call[c(1, indx)]
   temp[[1]] <- as.name("model.frame")
-  f2 <- flexsurv:::concat.formulae(formula, forms)
+  f2 <- concat.formulae(formula, forms)
   temp[["formula"]] <- f2
   if (missing(data))
     temp[["data"]] <- environment(formula)
@@ -285,7 +360,7 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
   attr(m, "covnames") <- attr(f2, "covnames")
   attr(m, "covnames.orig") <- intersect(colnames(m),
                                         attr(f2, "covnames.orig"))
-  Y <- flexsurv:::check.flexsurv.response(stats::model.extract(m, "response"))
+  Y <- check.flexsurv.response(stats::model.extract(m, "response"))
   mml <- mx <- vector(mode = "list", length = length(dlist$pars))
   names(mml) <- names(mx) <- c(dlist$location, setdiff(dlist$pars,
                                                        dlist$location))
@@ -294,7 +369,7 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
     mx[[i]] <- length(unlist(mx)) + seq_len(ncol(mml[[i]][,
                                                           -1, drop = FALSE]))
   }
-  X <- flexsurv:::compress.model.matrices(mml)
+  X <- compress.model.matrices(mml)
   weights <- stats::model.extract(m, "weights")
   if (is.null(weights))
     weights <- m$"(weights)" <- rep(1, nrow(X))
@@ -316,7 +391,7 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
                                                   "time2"]), (Y[, "time1"] + Y[, "time2"])/2,
                  Y[, "time1"])
     wt <- yy * weights * length(yy)/sum(weights)
-    dlist$inits <- flexsurv:::expand.inits.args(dlist$inits)
+    dlist$inits <- expand.inits.args(dlist$inits)
     inits.aux <- c(aux, list(forms = forms, data = if (missing(data)) NULL else data,
                              weights = temp$weights, control = sr.control, counting = (attr(stats::model.extract(m,
                                                                                                           "response"), "type") == "counting")))
@@ -351,7 +426,7 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
          " out of range")
   }
   names(inits) <- c(parnames, colnames(X))
-  flexsurv:::check.fixedpars(fixedpars, npars)
+  check.fixedpars(fixedpars, npars)
   #print((is.logical(fixedpars) && fixedpars == TRUE) || (is.numeric(fixedpars) &&
   #identical(as.vector(fixedpars), 1:npars)))
   if ((is.logical(fixedpars) && fixedpars == TRUE) || (is.numeric(fixedpars) &&
@@ -393,7 +468,7 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
     if (hessian && all(!is.na(opt$hessian)) && all(!is.nan(opt$hessian)) &&
         all(is.finite(opt$hessian)) && all(eigen(opt$hessian)$values >
                                            0)) {
-      cov <- flexsurv:::.hess_to_cov(opt$hessian, hess.control$tol.solve,
+      cov <- .hess_to_cov(opt$hessian, hess.control$tol.solve,
                           hess.control$tol.evalues)
       se <- sqrt(diag(cov))
       if (!is.numeric(cl) || length(cl) > 1 || !(cl > 0) ||
@@ -418,8 +493,8 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
       if (identical(body(dlist$transforms[[i]]), body(log)))
         res[i, "se"] <- exp(res.t[i, "est"]) *
           res.t[i, "se"]
-      else if (identical(body(dlist$transforms[[i]]), body(flexsurv:::logh)))
-        res[i, "se"] <- flexsurv:::dexph(res.t[i, "est"]) *
+      else if (identical(body(dlist$transforms[[i]]), body(logh)))
+        res[i, "se"] <- dexph(res.t[i, "est"]) *
           res.t[i, "se"]
       else if (!identical(dlist$transforms[[i]], identity))
         res[i, "se"] <- NA
@@ -447,7 +522,7 @@ flexsurvreg <- function (formula, anc = NULL, data, weights, bhazard, rtrunc,
       optpars <- inits
       fixedpars = FALSE
     }
-    ret$deriv.test <- flexsurv:::deriv.test(optpars = optpars, Y = Y,
+    ret$deriv.test <- deriv.test(optpars = optpars, Y = Y,
                                  X = X, weights = weights, bhazard = bhazard, rtrunc = rtrunc,
                                  dlist = dlist, inits = inits, dfns = dfns, aux = aux,
                                  mx = mx, fixedpars = fixedpars)

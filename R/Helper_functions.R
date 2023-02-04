@@ -1,6 +1,18 @@
 # FUNCTION ----
 `%!in%` = Negate(`%in%`)
 
+#NAMESPACE HACK FOR CRAN; won't let me use SHELF::: :-(
+logt.error <-utils::getFromNamespace("logt.error", "SHELF")
+gamma.error<-utils::getFromNamespace("gamma.error", "SHELF")
+lognormal.error<-utils::getFromNamespace("lognormal.error", "SHELF")
+logt.error<-utils::getFromNamespace("logt.error", "SHELF")
+makeGroupPlot<-utils::getFromNamespace("makeGroupPlot", "SHELF")
+makeLinearPoolPlot<-utils::getFromNamespace("makeLinearPoolPlot", "SHELF")
+makeSingleExpertPlot<-utils::getFromNamespace("makeSingleExpertPlot", "SHELF")
+expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
+
+
+
 gamma.error_mod <- function (parameters, values, probabilities, weights, mode){
   res1 <-  sum(weights * (stats::pgamma(values, exp(parameters[1]), exp(parameters[2])) - 
                    probabilities)^2) 
@@ -135,6 +147,17 @@ expert_log_dens <- function(x, df, pool_type, k_norm = NULL, St_indic){
 
 fitdist_mod <- function (vals, probs, lower = -Inf, upper = Inf, weights = 1, 
                      tdf = 3, expertnames = NULL, excludelog.mirror = TRUE, mode = NULL){
+#NAMESPACE HACK FOR CRAN; won't let me use SHELF::: :-(
+logt.error <-utils::getFromNamespace("logt.error", "SHELF")
+gamma.error<-utils::getFromNamespace("gamma.error", "SHELF")
+lognormal.error<-utils::getFromNamespace("lognormal.error", "SHELF")
+logt.error<-utils::getFromNamespace("logt.error", "SHELF")
+makeGroupPlot<-utils::getFromNamespace("makeGroupPlot", "SHELF")
+makeLinearPoolPlot<-utils::getFromNamespace("makeLinearPoolPlot", "SHELF")
+makeSingleExpertPlot<-utils::getFromNamespace("makeSingleExpertPlot", "SHELF")
+expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
+					 
+					 
   if (is.matrix(vals) == F) {
     vals <- matrix(vals, nrow = length(vals), ncol = 1)
   }
@@ -242,7 +265,7 @@ fitdist_mod <- function (vals, probs, lower = -Inf, upper = Inf, weights = 1,
       lognormal.parameters[i, 1:2] <- c(lognormal.fit$par[1], 
                                         exp(lognormal.fit$par[2]))
       ssq[i, "lognormal"] <- lognormal.fit$value
-      logt.fit <- stats::optim(c(log(m.scaled1), log(std)), SHELF:::logt.error, 
+      logt.fit <- stats::optim(c(log(m.scaled1), log(std)), logt.error, 
                         values = vals.scaled1, probabilities = probs[inc, 
                                                                      i], weights = weights[inc, i], degreesfreedom = tdf[i])
       logt.parameters[i, 1:2] <- c(logt.fit$par[1], exp(logt.fit$par[2]))
@@ -271,7 +294,7 @@ fitdist_mod <- function (vals, probs, lower = -Inf, upper = Inf, weights = 1,
       probsMirrored <- 1 - probs[inc, i]
       mMirrored <- upper[i] - m
       mirrorgamma.fit <- stats::optim(c(log(mMirrored^2/v), log(mMirrored/v)), 
-                               SHELF:::gamma.error, values = valsMirrored, probabilities = probsMirrored, 
+                               gamma.error, values = valsMirrored, probabilities = probsMirrored, 
                                weights = weights[inc, i])
       mirrorgamma.parameters[i, ] <- exp(mirrorgamma.fit$par)
       ssq[i, "mirrorgamma"] <- mirrorgamma.fit$value
@@ -281,13 +304,13 @@ fitdist_mod <- function (vals, probs, lower = -Inf, upper = Inf, weights = 1,
       stdMirror <- ((log(upper[i] - l) - log(upper[i] - 
                                                u))/1.35)
       mirrorlognormal.fit <- optim(c(mlogMirror, log(stdMirror)), 
-                                   SHELF:::lognormal.error, values = valsMirrored, probabilities = probsMirrored, 
+                                   lognormal.error, values = valsMirrored, probabilities = probsMirrored, 
                                    weights = weights[inc, i])
       mirrorlognormal.parameters[i, 1:2] <- c(mirrorlognormal.fit$par[1], 
                                               exp(mirrorlognormal.fit$par[2]))
       ssq[i, "mirrorlognormal"] <- mirrorlognormal.fit$value
       mirrorlogt.fit <- stats::optim(c(log(mMirrored), log(stdMirror)), 
-                              SHELF:::logt.error, values = valsMirrored, probabilities = probsMirrored, 
+                              logt.error, values = valsMirrored, probabilities = probsMirrored, 
                               weights = weights[inc, i], degreesfreedom = tdf[i])
       mirrorlogt.parameters[i, 1:2] <- c(mirrorlogt.fit$par[1], 
                                          exp(mirrorlogt.fit$par[2]))
@@ -356,6 +379,17 @@ plotfit <- function (fit, d = "best", xl = -Inf, xu = Inf, ql = NA, qu = NA,
           lp = FALSE, ex = NA, sf = 3, ind = TRUE, lpw = 1, fs = 12, 
           lwd = 1, xlab = "x", ylab = expression(f[X](x)), legend_full = TRUE, 
           percentages = FALSE, returnPlot = FALSE){
+#NAMESPACE HACK FOR CRAN; won't let me use SHELF::: :-(
+logt.error <-utils::getFromNamespace("logt.error", "SHELF")
+gamma.error<-utils::getFromNamespace("gamma.error", "SHELF")
+lognormal.error<-utils::getFromNamespace("lognormal.error", "SHELF")
+logt.error<-utils::getFromNamespace("logt.error", "SHELF")
+makeGroupPlot<-utils::getFromNamespace("makeGroupPlot", "SHELF")
+makeLinearPoolPlot<-utils::getFromNamespace("makeLinearPoolPlot", "SHELF")
+makeSingleExpertPlot<-utils::getFromNamespace("makeSingleExpertPlot", "SHELF")
+expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
+	  
+		  
   if (d == "beta" & (min(fit$limits) == -Inf | max(fit$limits) == 
                      Inf)) {
     stop("Parameter limits must be finite to fit a beta distribution")
@@ -384,7 +418,7 @@ plotfit <- function (fit, d = "best", xl = -Inf, xu = Inf, ql = NA, qu = NA,
     if (xu == Inf & max(fit$limits[, 2]) < Inf) {
       xu <- max(fit$limits[, 2])
     }
-    p1 <- suppressWarnings(SHELF:::makeGroupPlot(fit, xl, xu, d, 
+    p1 <- suppressWarnings(makeGroupPlot(fit, xl, xu, d, 
                                          lwd, xlab, ylab, expertnames = rownames(fit$Normal)))
     #print(p1)
     if (returnPlot) {
@@ -406,7 +440,7 @@ plotfit <- function (fit, d = "best", xl = -Inf, xu = Inf, ql = NA, qu = NA,
       f2 <- SHELF::feedback(fit, quantiles = 0.99, dist = d)
       xu <- max(f2$expert.quantiles)
     }
-    p1 <- SHELF:::makeLinearPoolPlot(fit, xl, xu, d, lpw, lwd, xlab, 
+    p1 <- makeLinearPoolPlot(fit, xl, xu, d, lpw, lwd, xlab, 
                              ylab, legend_full, expertnames = rownames(fit$Normal))
     #print(p1)
     if (returnPlot) {
@@ -420,7 +454,7 @@ plotfit <- function (fit, d = "best", xl = -Inf, xu = Inf, ql = NA, qu = NA,
     if (xu == Inf & fit$limits[ex, 2] < Inf) {
       xu <- fit$limits[ex, 2]
     }
-    p1 <- suppressWarnings(SHELF:::makeSingleExpertPlot(fit, d, 
+    p1 <- suppressWarnings(makeSingleExpertPlot(fit, d, 
                                                 xl, xu, ql, qu, sf, ex = ex, lwd, xlab, ylab, percentages))
     #print(p1)
     if (returnPlot) {
@@ -428,7 +462,7 @@ plotfit <- function (fit, d = "best", xl = -Inf, xu = Inf, ql = NA, qu = NA,
     }
   }
   if (nrow(fit$vals) == 1) {
-    p1 <- suppressWarnings(SHELF:::makeSingleExpertPlot(fit, d, 
+    p1 <- suppressWarnings(makeSingleExpertPlot(fit, d, 
                                                 xl, xu, ql, qu, sf, ex = 1, lwd, xlab, ylab, percentages))
     #print(p1)
     if (returnPlot) {
@@ -839,6 +873,18 @@ makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x",
                           ylab=expression(f[X](x)), legend_full = TRUE, 
                           ql = NULL, qu = NULL, nx = 500, addquantile = FALSE, fs = 12, 
                           expertnames = NULL, St_indic){
+						 
+#NAMESPACE HACK FOR CRAN; won't let me use SHELF::: :-(
+logt.error <-utils::getFromNamespace("logt.error", "SHELF")
+gamma.error<-utils::getFromNamespace("gamma.error", "SHELF")
+lognormal.error<-utils::getFromNamespace("lognormal.error", "SHELF")
+logt.error<-utils::getFromNamespace("logt.error", "SHELF")
+makeGroupPlot<-utils::getFromNamespace("makeGroupPlot", "SHELF")
+makeLinearPoolPlot<-utils::getFromNamespace("makeLinearPoolPlot", "SHELF")
+makeSingleExpertPlot<-utils::getFromNamespace("makeSingleExpertPlot", "SHELF")
+expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
+
+					  
   lpname <- c("linear pool", "log pool")
   
   expert <- ftype <- NULL
@@ -884,7 +930,7 @@ makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x",
   }
   
   for (i in 1:n.experts) {
-    densitydata <- SHELF:::expertdensity(fit, d[i], ex = i, xl, 
+    densitydata <- expertdensity(fit, d[i], ex = i, xl, 
                                          xu, ql, qu, nx)
     x[, i] <- densitydata$x
     if(St_indic ==1){ #Truncated between 0 and 1
@@ -1040,7 +1086,7 @@ plot_expert_opinion <- function(object, xl_plt = NULL, xu_plt = NULL, weights = 
   
   
   
-  if(class(object) == "elicitation"){
+  if(inherits(object,"elicitation")){
 
       if(is.null(xl_plt)){
         xl_plt <- min(object$limits["lower"])
@@ -2451,6 +2497,7 @@ load_availables <- function(){
 #' }
 #' @references 
 #' \insertRef{Baio.2020}{expertsurv}
+#' 
 #' @exportS3Method print
 #' @export print.expertsurv
 print.expertsurv <-function (x, mod = 1, ...) 
@@ -2494,7 +2541,7 @@ print.expertsurv <-function (x, mod = 1, ...)
 
 make_sim_hmc <- function (m, t, X, nsim, newdata, dist, summary_stat, ...){
   
-  if(class(m)== "rjags"){
+  if(inherits(m,"rjags")){
     iter_stan <- m[["n.iter"]]
     beta <- m$BUGSoutput$sims.matrix[, grep("beta",colnames(m$BUGSoutput$sims.matrix))]
   }else{
@@ -2530,7 +2577,7 @@ make_sim_hmc <- function (m, t, X, nsim, newdata, dist, summary_stat, ...){
 
 
 rescale_hmc_gam <- function (m, X, linpred){
-  if(class(m)== "rjags"){
+  if(inherits(m,"rjags")){
     shape <- as.numeric(m$BUGSoutput$sims.matrix[,"alpha"])
   }else{
     shape <- as.numeric(rstan::extract(m)$alpha)
@@ -2545,7 +2592,7 @@ rescale_hmc_gam <- function (m, X, linpred){
 
 
 rescale_hmc_gom <- function (m, X, linpred){
-  if(class(m)== "rjags"){
+  if(inherits(m,"rjags")){
     shape <- as.numeric(m$BUGSoutput$sims.matrix[,"alpha"])
   }else{
     shape <- as.numeric(rstan::extract(m)$alpha)
@@ -2559,7 +2606,7 @@ rescale_hmc_gom <- function (m, X, linpred){
 
 rescale_hmc_gga<- function (m, X, linpred){
   
-  if(class(m)== "rjags"){
+  if(inherits(m,"rjags")){
     Q <- as.numeric(m$BUGSoutput$sims.matrix[,"Q"])
     sigma <- as.numeric(m$BUGSoutput$sims.matrix[,"sigma"])
   }else{
@@ -2574,7 +2621,7 @@ rescale_hmc_gga<- function (m, X, linpred){
 
 get_stats_hmc <- function(x, mod){
   
-  if(class(x$models[[mod]])== "rjags"){
+  if(inherits(x$models[[mod]],"rjags")) {
    table =  x$models[[mod]]$BUGSoutput$summary[,c("mean", 
                                                   "sd", "2.5%", "97.5%")]
   }else{
@@ -2625,7 +2672,7 @@ rescale_stats_hmc_gam <- function (table, x){
 }
 
 get_stats_hmc <- function (x, mod){
-  if (class(x$models[[mod]]) == "rjags") {
+  if (inherits(x$models[[mod]],"rjags")) {
     table = x$models[[mod]]$BUGSoutput$summary[, c("mean", 
                                                    "sd", "2.5%", "97.5%")]
   }

@@ -440,9 +440,9 @@ make_profile_surv <- function(formula,data,newdata) {
   
   ncovs <- covs %>% select(-contains("Intercept")) %>% with(ncol(.))
   # Selects the subset of categorical covariates
-  is.fac <- covs %>% select(tidyselect:::where(is.factor))
+  is.fac <- covs %>% select(tidyselect::vars_select_helpers$where(is.factor))
   fac.levels=lapply(is.fac,levels)
-  nfacts <- covs %>% select(tidyselect:::where(is.factor)) %>% with(ncol(.))
+  nfacts <- covs %>% select(tidyselect::vars_select_helpers$where(is.factor)) %>% with(ncol(.))
   
   # If formula is in 'inla' terms now change it back to 'flexsurv' terms
   formula_temp <- as.formula(gsub("inla.surv","Surv",deparse(formula)))

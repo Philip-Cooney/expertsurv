@@ -1,16 +1,15 @@
 citation_expert <- citHeader("To cite expertsurv in publications use:")
 citEntry(entry = "Article",
-         title        = "Utilizing Expert Opinion to inform Extrapolation of Survival Models",
-         author       = personList(as.person("Philip Cooney"),
-                                   as.person("Arthur White")),
-         journal      = "arXiv",
-         year         = "2021",
-         pages        = "1--13",
-         url          = "https://arxiv.org/pdf/2112.02288.pdf",
+         title        = "Direct Incorporation of Expert Opinion into Parametric Survival Models to Inform Survival Extrapolation",
+         author       = "Philip Cooney and Arthur White",
+         journal      = "Medical Decision Making",
+         year         = "2023",
+         pages        = "1--12",
+         url          = "https://journals.sagepub.com/doi/epub/10.1177/0272989X221150212",
          
          textVersion  =
-           paste("Philp Cooney, Arthur White (2021).",
-                 "Utilizing Expert Opinion to inform Extrapolation of Survival Models.",
-                 "arXiv, 1-13.",
-                 "URL https://arxiv.org/pdf/2112.02288.pdf.")
+           paste("Philp Cooney, Arthur White (2022).",
+                 "Direct Incorporation of Expert Opinion into Parametric Survival Models to Inform Survival Extrapolation",
+                 "Medical Decision Making, 1-12.",
+                 "URL https://journals.sagepub.com/doi/epub/10.1177/0272989X221150212.")
 )
