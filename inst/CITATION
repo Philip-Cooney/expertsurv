@@ -1,0 +1,33 @@
+citation_expert <- citHeader("To cite expertsurv in publications use:")
+bibentry(
+     bibtype = "Manual",
+     title = "expertsurv: Incorporate Expert Opinion with Parametric Survival Models",
+     author = c(
+        person("Philip", "Cooney", email = "phcooney@tcd.ie",
+        role = c("aut", "cre")),
+        person("Arthur", "White", email = "arwhite@tcd.ie",
+        role = c("ths"))),
+     year = "2023",
+     note = "R package version 1.0.0",
+#     url = "https://CRAN.R-project.org/package=expertsurv",
+     key = "expertsurv-package"
+   )
+   
+bibentry(bibtype = "Article",
+         title        = "Direct Incorporation of Expert Opinion into Parametric Survival Models to Inform Survival Extrapolation",
+        author = c(
+        person("Philip", "Cooney", email = "phcooney@tcd.ie",
+        role = c("aut", "cre")),
+        person("Arthur", "White", email = "arwhite@tcd.ie",
+        role = c("ths"))),
+         journal      = "Medical Decision Making",
+         year         = "2023",
+         pages        = "1--12",
+         url          = "https://journals.sagepub.com/doi/epub/10.1177/0272989X221150212",
+         
+         textVersion  =
+           paste("Philp Cooney, Arthur White (2023).",
+                 "Direct Incorporation of Expert Opinion into Parametric Survival Models to Inform Survival Extrapolation",
+                 "Medical Decision Making, 1-12.",
+                 "URL https://journals.sagepub.com/doi/epub/10.1177/0272989X221150212")
+)

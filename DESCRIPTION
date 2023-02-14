@@ -1,0 +1,62 @@
+Package: expertsurv
+Title: Incorporate Expert Opinion with Parametric Survival Models
+Version: 1.0.0
+Authors@R: 
+    c(person(given = "Philip",
+           family = "Cooney",
+           role = c("aut", "cre"),
+           email = "phcooney@tcd.ie",
+           comment = c(ORCID = "0000-0001-9649-0195")),
+     person(given = "Arthur",
+           family = "White",
+           role = "ths",
+           comment = c(ORCID = "0000-0002-7268-5163")))
+Description: Enables users to incorporate expert opinion with parametric survival analysis using a Bayesian or frequentist approach. Expert Opinion can be provided on the survival probabilities at certain time-point(s) or for the difference in mean survival between two treatment arms.Please reference its use as Cooney, P., White, A. (2023) <doi:10.1177/0272989X221150212>.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Biarch: true
+Depends: 
+    R (>= 3.4.0),
+    survival
+Imports: 
+    abind,
+    dplyr,
+    flexsurv (>= 2.0),
+    ggplot2,
+    loo,
+    magrittr (>= 2.0),
+    methods,
+    Rcpp (>= 0.12.0),
+    RcppParallel (>= 5.0.1),
+    Rdpack,
+    rms,
+    rstan (>= 2.18.1),
+    rstantools (>= 2.2.0),
+    scales,
+    SHELF,
+    stats,
+    stringr,
+    tibble,
+    tidyselect,
+    utils
+LinkingTo: 
+    BH (>= 1.66.0),
+    Rcpp (>= 0.12.0),
+    RcppEigen (>= 0.3.3.3.0),
+    RcppParallel (>= 5.0.1),
+    rstan (>= 2.18.1),
+    StanHeaders (>= 2.18.0)
+SystemRequirements: 
+    GNU make
+    C++17
+Suggests: 
+    rmarkdown,
+    knitr,
+    rjags,
+    R2jags,
+    xlsx
+VignetteBuilder: knitr
+RdMacros: Rdpack
