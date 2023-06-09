@@ -11,59 +11,52 @@ makeLinearPoolPlot<-utils::getFromNamespace("makeLinearPoolPlot", "SHELF")
 makeSingleExpertPlot<-utils::getFromNamespace("makeSingleExpertPlot", "SHELF")
 expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
 
+normal.error_mod <- function (parameters, values, probabilities, weights, mode){
+  res1 <- sum(weights * (pnorm(values, parameters[1], exp(parameters[2])) - 
+                           probabilities)^2)
+  if (!is.null(mode)) {
+    res1 <- res1 + (parameters[1] - mode)^2
+  }
+  return(res1)
+}
 
+t.error_mod <- function (parameters, values, probabilities, weights, degreesfreedom, 
+                         mode){ 
+  res1 <- sum(weights * (stats::pt((values - parameters[1])/exp(parameters[2]), 
+                                   degreesfreedom) - probabilities)^2)
+  if (!is.null(mode)) {
+    res1 <- res1 + (parameters[1] - mode)^2
+  }
+  return(res1)
+}
 
 gamma.error_mod <- function (parameters, values, probabilities, weights, mode){
-  res1 <-  sum(weights * (stats::pgamma(values, exp(parameters[1]), exp(parameters[2])) - 
-                   probabilities)^2) 
-  
-  if(!is.null(model)){
-    res1 <- res1 + ((exp(parameters[1])-1)/exp(parameters[2]) -mode)^2 #Mode
+  res1 <- sum(weights * (stats::pgamma(values, exp(parameters[1]), 
+                                       exp(parameters[2])) - probabilities)^2)
+  if (!is.null(mode)) {
+    res1 <- res1 + ((exp(parameters[1]) - 1)/exp(parameters[2]) - 
+                      mode)^2
   }
   return(res1)
-
 }
 
-beta.error_mod <- function (parameters, values, probabilities, weights, mode) 
-{
-  res1 <-  sum(weights * (stats::pbeta(values, exp(parameters[1]), exp(parameters[2])) - 
-                   probabilities)^2) 
-  
-  if(!is.null(model)){
-    res1 <- res1 +  ((exp(parameters[1])-1)/(exp(parameters[1])+exp(parameters[2])-2) -mode)^2 
+lognormal.error_mod <-function (parameters, values, probabilities, weights, mode){
+  res1 <- sum(weights * (stats::plnorm(values, parameters[1], 
+                                       exp(parameters[2])) - probabilities)^2)
+  if (!is.null(mode)) {
+    res1 <- res1 + (exp(parameters[1] - exp(parameters[2])^2) - 
+                      mode)^2
   }
   return(res1)
- 
 }
-
-normal.error_mod <- function (parameters, values, probabilities, weights, mode){
-  res1 <-  sum(weights * (pnorm(values, parameters[1], exp(parameters[2])) - 
-                   probabilities)^2)
-  if(!is.null(model)){
-    res1 <- res1 + (parameters[1] -mode)^2
+beta.error_mod <- function (parameters, values, probabilities, weights, mode){
+  res1 <- sum(weights * (stats::pbeta(values, exp(parameters[1]), 
+                                      exp(parameters[2])) - probabilities)^2)
+  if (!is.null(mode)) {
+    res1 <- res1 + ((exp(parameters[1]) - 1)/(exp(parameters[1]) + 
+                                                exp(parameters[2]) - 2) - mode)^2
   }
   return(res1)
-  
-}
-
-
-t.error_mod <- function (parameters, values, probabilities, weights, degreesfreedom, mode){
-  res1 <- sum(weights * (stats::pt((values - parameters[1])/exp(parameters[2]), 
-                    degreesfreedom) - probabilities)^2)
-  
-  if(!is.null(model)){
-    res1 <- res1 + (parameters[1] -mode)^2
-  }
-  
-}
-
-
-lognormal.error_mod <- function (parameters, values, probabilities, weights, mode){
-  res1 <-sum(weights * (stats::plnorm(values, parameters[1], exp(parameters[2])) - 
-                   probabilities)^2)
-  if(!is.null(model)){
-    res1 <- res1 +  (exp(parameters[1]-exp(parameters[2])^2) -mode)^2
-  }
 }
 
 dt.scaled <- function (x, df, mean = 0, sd = 1, ncp, log = FALSE){
@@ -146,18 +139,20 @@ expert_log_dens <- function(x, df, pool_type, k_norm = NULL, St_indic){
 
 
 fitdist_mod <- function (vals, probs, lower = -Inf, upper = Inf, weights = 1, 
-                     tdf = 3, expertnames = NULL, excludelog.mirror = TRUE, mode = NULL){
-#NAMESPACE HACK FOR CRAN; won't let me use SHELF::: :-(
-logt.error <-utils::getFromNamespace("logt.error", "SHELF")
-gamma.error<-utils::getFromNamespace("gamma.error", "SHELF")
-lognormal.error<-utils::getFromNamespace("lognormal.error", "SHELF")
-logt.error<-utils::getFromNamespace("logt.error", "SHELF")
-makeGroupPlot<-utils::getFromNamespace("makeGroupPlot", "SHELF")
-makeLinearPoolPlot<-utils::getFromNamespace("makeLinearPoolPlot", "SHELF")
-makeSingleExpertPlot<-utils::getFromNamespace("makeSingleExpertPlot", "SHELF")
-expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
-					 
-					 
+                         tdf = 3, expertnames = NULL, excludelog.mirror = TRUE, mode = NULL){
+  logt.error <- utils::getFromNamespace("logt.error", "SHELF")
+  gamma.error <- utils::getFromNamespace("gamma.error", "SHELF")
+  lognormal.error <- utils::getFromNamespace("lognormal.error", 
+                                             "SHELF")
+  logt.error <- utils::getFromNamespace("logt.error", "SHELF")
+  makeGroupPlot <- utils::getFromNamespace("makeGroupPlot", 
+                                           "SHELF")
+  makeLinearPoolPlot <- utils::getFromNamespace("makeLinearPoolPlot", 
+                                                "SHELF")
+  makeSingleExpertPlot <- utils::getFromNamespace("makeSingleExpertPlot", 
+                                                  "SHELF")
+  expertdensity <- utils::getFromNamespace("expertdensity", 
+                                           "SHELF")
   if (is.matrix(vals) == F) {
     vals <- matrix(vals, nrow = length(vals), ncol = 1)
   }
@@ -187,9 +182,8 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
                                                      3)
   beta.parameters <- matrix(NA, n.experts, 2)
   ssq <- matrix(NA, n.experts, 9)
-  colnames(ssq) <- c("normal", "t", "gamma", 
-                     "lognormal", "logt", "beta", "mirrorgamma", 
-                     "mirrorlognormal", "mirrorlogt")
+  colnames(ssq) <- c("normal", "t", "gamma", "lognormal", "logt", 
+                     "beta", "mirrorgamma", "mirrorlognormal", "mirrorlogt")
   if (n.experts > 1 & n.experts < 27 & is.null(expertnames)) {
     expertnames <- paste("expert.", LETTERS[1:n.experts], 
                          sep = "")
@@ -200,15 +194,15 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
   limits <- data.frame(lower = lower, upper = upper)
   row.names(limits) <- expertnames
   for (i in 1:n.experts) {
-    if (min(probs[, i]) > 0.4) {
-      stop("smallest elicited probability must be less than 0.4")
-    }
+    # if (min(probs[, i]) > 0.4) {
+    #  stop("smallest elicited probability must be less than 0.4")
+    # }
     if (min(probs[, i]) < 0 | max(probs[, i]) > 1) {
       stop("probabilities must be between 0 and 1")
     }
-    if (max(probs[, i]) < 0.6) {
-      stop("largest elicited probability must be greater than 0.6")
-    }
+    #  if (max(probs[, i]) < 0.6) {
+    #    stop("largest elicited probability must be greater than 0.6")
+    #  }
     if (min(vals[, i]) < lower[i]) {
       stop("elicited parameter values cannot be smaller than lower parameter limit")
     }
@@ -229,8 +223,8 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
     maxprob <- max(probs[inc, i])
     minvals <- min(vals[inc, i])
     maxvals <- max(vals[inc, i])
-    q.fit <- stats::approx(x = probs[inc, i], y = vals[inc, i], 
-                    xout = c(0.4, 0.5, 0.6))$y
+    q.fit <- stats::approx(x = probs[inc, i], y = vals[inc, 
+                                                       i], xout = c(0.4, 0.5, 0.6))$y
     l <- q.fit[1]
     u <- q.fit[3]
     minq <- stats::qnorm(minprob)
@@ -238,36 +232,37 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
     m <- (minvals * maxq - maxvals * minq)/(maxq - minq)
     v <- ((maxvals - minvals)/(maxq - minq))^2
     normal.fit <- stats::optim(c(m, 0.5 * log(v)), normal.error_mod, 
-                        values = vals[inc, i], probabilities = probs[inc, 
-                                                                     i], weights = weights[inc, i], mode = mode[i])
+                               values = vals[inc, i], probabilities = probs[inc, 
+                                                                            i], weights = weights[inc, i], mode = mode[i])
     normal.parameters[i, ] <- c(normal.fit$par[1], exp(normal.fit$par[2]))
     ssq[i, "normal"] <- normal.fit$value
-    t.fit <- stats::optim(c(m, 0.5 * log(v)), t.error_mod, values = vals[inc,i], 
-                   probabilities = probs[inc, i], weights = weights[inc,i], degreesfreedom = tdf[i], mode = mode[i])
+    t.fit <- stats::optim(c(m, 0.5 * log(v)), t.error_mod, 
+                          values = vals[inc, i], probabilities = probs[inc, 
+                                                                       i], weights = weights[inc, i], degreesfreedom = tdf[i], 
+                          mode = mode[i])
     t.parameters[i, 1:2] <- c(t.fit$par[1], exp(t.fit$par[2]))
     t.parameters[i, 3] <- tdf[i]
     ssq[i, "t"] <- t.fit$value
     if (lower[i] > -Inf) {
       vals.scaled1 <- vals[inc, i] - lower[i]
-      
       m.scaled1 <- m - lower[i]
       gamma.fit <- stats::optim(c(log(m.scaled1^2/v), log(m.scaled1/v)), 
-                         gamma.error_mod, values = vals.scaled1, probabilities = probs[inc, 
-                                                                                   i], weights = weights[inc, i], mode = mode[i])
+                                gamma.error_mod, values = vals.scaled1, probabilities = probs[inc, 
+                                                                                              i], weights = weights[inc, i], mode = mode[i])
       gamma.parameters[i, ] <- exp(gamma.fit$par)
       ssq[i, "gamma"] <- gamma.fit$value
       std <- ((log(u - lower[i]) - log(l - lower[i]))/1.35)
       mlog <- (log(minvals - lower[i]) * maxq - log(maxvals - 
                                                       lower[i]) * minq)/(maxq - minq)
-      lognormal.fit <- stats::optim(c(mlog, log(std)), lognormal.error_mod, 
-                             values = vals.scaled1, probabilities = probs[inc, 
-                                                                          i], weights = weights[inc, i], mode = mode[i])
+      lognormal.fit <- stats::optim(c(mlog, log(std)), 
+                                    lognormal.error_mod, values = vals.scaled1, probabilities = probs[inc, 
+                                                                                                      i], weights = weights[inc, i], mode = mode[i])
       lognormal.parameters[i, 1:2] <- c(lognormal.fit$par[1], 
                                         exp(lognormal.fit$par[2]))
       ssq[i, "lognormal"] <- lognormal.fit$value
-      logt.fit <- stats::optim(c(log(m.scaled1), log(std)), logt.error, 
-                        values = vals.scaled1, probabilities = probs[inc, 
-                                                                     i], weights = weights[inc, i], degreesfreedom = tdf[i])
+      logt.fit <- stats::optim(c(log(m.scaled1), log(std)), 
+                               logt.error, values = vals.scaled1, probabilities = probs[inc, 
+                                                                                        i], weights = weights[inc, i], degreesfreedom = tdf[i])
       logt.parameters[i, 1:2] <- c(logt.fit$par[1], exp(logt.fit$par[2]))
       logt.parameters[i, 3] <- tdf[i]
       ssq[i, "logt"] <- logt.fit$value
@@ -280,12 +275,13 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
       alp <- abs(m.scaled2^3/v.scaled2 * (1/m.scaled2 - 
                                             1) - m.scaled2)
       bet <- abs(alp/m.scaled2 - alp)
-      if (identical(probs[inc, i], (vals[inc, i] - lower[i])/(upper[i] - lower[i]))) {
+      if (identical(probs[inc, i], (vals[inc, i] - lower[i])/(upper[i] - 
+                                                              lower[i]))) {
         alp <- bet <- 1
       }
       beta.fit <- stats::optim(c(log(alp), log(bet)), beta.error_mod, 
-                        values = vals.scaled2, probabilities = probs[inc, 
-                                                                     i], weights = weights[inc, i], mode = mode[i])
+                               values = vals.scaled2, probabilities = probs[inc, 
+                                                                            i], weights = weights[inc, i], mode = mode[i])
       beta.parameters[i, ] <- exp(beta.fit$par)
       ssq[i, "beta"] <- beta.fit$value
     }
@@ -293,9 +289,10 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
       valsMirrored <- upper[i] - vals[inc, i]
       probsMirrored <- 1 - probs[inc, i]
       mMirrored <- upper[i] - m
-      mirrorgamma.fit <- stats::optim(c(log(mMirrored^2/v), log(mMirrored/v)), 
-                               gamma.error, values = valsMirrored, probabilities = probsMirrored, 
-                               weights = weights[inc, i])
+      mirrorgamma.fit <- stats::optim(c(log(mMirrored^2/v), 
+                                        log(mMirrored/v)), gamma.error, values = valsMirrored, 
+                                      probabilities = probsMirrored, weights = weights[inc, 
+                                                                                       i])
       mirrorgamma.parameters[i, ] <- exp(mirrorgamma.fit$par)
       ssq[i, "mirrorgamma"] <- mirrorgamma.fit$value
       mlogMirror <- (log(upper[i] - maxvals) * (1 - minq) - 
@@ -309,9 +306,10 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
       mirrorlognormal.parameters[i, 1:2] <- c(mirrorlognormal.fit$par[1], 
                                               exp(mirrorlognormal.fit$par[2]))
       ssq[i, "mirrorlognormal"] <- mirrorlognormal.fit$value
-      mirrorlogt.fit <- stats::optim(c(log(mMirrored), log(stdMirror)), 
-                              logt.error, values = valsMirrored, probabilities = probsMirrored, 
-                              weights = weights[inc, i], degreesfreedom = tdf[i])
+      mirrorlogt.fit <- stats::optim(c(log(mMirrored), 
+                                       log(stdMirror)), logt.error, values = valsMirrored, 
+                                     probabilities = probsMirrored, weights = weights[inc, 
+                                                                                      i], degreesfreedom = tdf[i])
       mirrorlogt.parameters[i, 1:2] <- c(mirrorlogt.fit$par[1], 
                                          exp(mirrorlogt.fit$par[2]))
       mirrorlogt.parameters[i, 3] <- tdf[i]
@@ -337,12 +335,10 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
   names(dfmirrorln) <- c("mean.log.X", "sd.log.X")
   row.names(dfmirrorln) <- expertnames
   dflt <- data.frame(logt.parameters)
-  names(dflt) <- c("location.log.X", "scale.log.X", 
-                   "df.log.X")
+  names(dflt) <- c("location.log.X", "scale.log.X", "df.log.X")
   row.names(dflt) <- expertnames
   dfmirrorlt <- data.frame(mirrorlogt.parameters)
-  names(dfmirrorlt) <- c("location.log.X", "scale.log.X", 
-                         "df.log.X")
+  names(dfmirrorlt) <- c("location.log.X", "scale.log.X", "df.log.X")
   row.names(dfmirrorlt) <- expertnames
   dfb <- data.frame(beta.parameters)
   names(dfb) <- c("shape1", "shape2")
@@ -350,8 +346,8 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
   ssq <- data.frame(ssq)
   row.names(ssq) <- expertnames
   if (excludelog.mirror) {
-    reducedssq <- ssq[, c("normal", "t", "gamma", 
-                          "lognormal", "beta")]
+    reducedssq <- ssq[, c("normal", "t", "gamma", "lognormal", 
+                          "beta")]
     index <- apply(reducedssq, 1, which.min)
     best.fitting <- data.frame(best.fit = names(reducedssq)[index])
   }
@@ -866,24 +862,24 @@ cred_int <- function(plt_obj, val = "linear pool",interval = c(0.025, 0.975)){
 #' @importFrom  scales hue_pal
 #' @noRd
 #' 
-makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd =1, xlab="x", 
-                          ylab=expression(f[X](x)), legend_full = TRUE, 
-                          ql = NULL, qu = NULL, nx = 500, addquantile = FALSE, fs = 12, 
-                          expertnames = NULL, St_indic){
-						 
-#NAMESPACE HACK FOR CRAN; won't let me use SHELF::: :-(
-logt.error <-utils::getFromNamespace("logt.error", "SHELF")
-gamma.error<-utils::getFromNamespace("gamma.error", "SHELF")
-lognormal.error<-utils::getFromNamespace("lognormal.error", "SHELF")
-logt.error<-utils::getFromNamespace("logt.error", "SHELF")
-makeGroupPlot<-utils::getFromNamespace("makeGroupPlot", "SHELF")
-makeLinearPoolPlot<-utils::getFromNamespace("makeLinearPoolPlot", "SHELF")
-makeSingleExpertPlot<-utils::getFromNamespace("makeSingleExpertPlot", "SHELF")
-expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
-
-					  
+makePoolPlot <- function (fit, xl, xu, d = "best", w = 1, lwd = 1, xlab = "x", 
+                          ylab = expression(f[X](x)), legend_full = TRUE, ql = NULL, 
+                          qu = NULL, nx = 500, addquantile = FALSE, fs = 12, expertnames = NULL, 
+                          St_indic){
+  logt.error <- utils::getFromNamespace("logt.error", "SHELF")
+  gamma.error <- utils::getFromNamespace("gamma.error", "SHELF")
+  lognormal.error <- utils::getFromNamespace("lognormal.error", 
+                                             "SHELF")
+  logt.error <- utils::getFromNamespace("logt.error", "SHELF")
+  makeGroupPlot <- utils::getFromNamespace("makeGroupPlot", 
+                                           "SHELF")
+  makeLinearPoolPlot <- utils::getFromNamespace("makeLinearPoolPlot", 
+                                                "SHELF")
+  makeSingleExpertPlot <- utils::getFromNamespace("makeSingleExpertPlot", 
+                                                  "SHELF")
+  expertdensity <- utils::getFromNamespace("expertdensity", 
+                                           "SHELF")
   lpname <- c("linear pool", "log pool")
-  
   expert <- ftype <- NULL
   n.experts <- nrow(fit$vals)
   if (length(d) == 1) {
@@ -907,69 +903,58 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
     w <- rep(w, n.experts)
   }
   weight <- matrix(w/sum(w), nxTotal, n.experts, byrow = T)
-  sd.norm <- rep(NA,n.experts )
+  sd.norm <- rep(NA, n.experts)
   for (i in 1:n.experts) {
-    
   }
-  
-  if(is.infinite(xl)||is.infinite(xu)){
-    
-    if(St_indic ==1){
+  if (is.infinite(xl) || is.infinite(xu)) {
+    if (St_indic == 1) {
       xl <- 0
       xu <- 1
-    }else{
-      max.sd.index <- which.max(fit$Normal$sd)
-      xl <- qnorm(0.001, fit$Normal[max.sd.index, 1], fit$Normal[max.sd.index,2])
-      xu <- qnorm(0.999, fit$Normal[max.sd.index, 1], fit$Normal[max.sd.index,2])
-      
     }
-    
+    else {
+      min.mean.index <- which.min(fit$Normal$mean)
+      min.sd.index <- which.min(fit$Normal$sd)
+      
+      max.mean.index <- which.max(fit$Normal$mean)
+      max.sd.index <- which.max(fit$Normal$sd)
+      xl <- qnorm(0.001, fit$Normal[min.mean.index, 1], 
+                  fit$Normal[min.sd.index, 2])
+      xu <- qnorm(0.999, fit$Normal[max.mean.index, 1], 
+                  fit$Normal[max.sd.index, 2])
+    }
   }
-  
   for (i in 1:n.experts) {
     densitydata <- expertdensity(fit, d[i], ex = i, xl, 
-                                         xu, ql, qu, nx)
+                                 xu, ql, qu, nx)
     x[, i] <- densitydata$x
-    if(St_indic ==1){ #Truncated between 0 and 1
-    k_trunc <-   integrate.xy(x = x[,1], fx = densitydata$fx)
-    }else{
-    k_trunc  <-1
+    if (St_indic == 1) {
+      k_trunc <- integrate.xy(x = x[, 1], fx = densitydata$fx)
     }
-    
+    else {
+      k_trunc <- 1
+    }
     fx[, i] <- densitydata$fx/k_trunc
-    
-
   }
-  #plot(x =  x[, 1], y = fx[,1])
-  #lines(x =  x[, 2], y = fx[,2])
-  
   fx.lp <- apply(fx * weight, 1, sum)
-  if(any(is.infinite(fx ^ weight))){
+  if (any(is.infinite(fx^weight))) {
     warning("Print Non finite density for log pooling - Results invalid")
   }
-  fx.logp <- apply(fx ^ weight, 1, prod)
-  k_norm <- integrate.xy(x = x[,1], fx = fx.logp)
+  fx.logp <- apply(fx^weight, 1, prod)
+  k_norm <- integrate.xy(x = x[, 1], fx = fx.logp)
   fx.logp <- fx.logp/k_norm
-  
-  #Should integrate to 1 after normalization
-  #sfsmisc::integrate.xy(x = x[,1], fx = fx.logp)
-  
-  
-  df1 <- data.frame(x = rep(x[, 1], n.experts + 2),
-                    fx = c(as.numeric(fx),fx.lp, fx.logp), 
-                    expert = factor(c(rep(expertnames, each = nxTotal),
-                                      rep("linear pool", nxTotal),rep("log pool", nxTotal)),
-                                    levels = c(expertnames, "linear pool", "log pool")), 
+  df1 <- data.frame(x = rep(x[, 1], n.experts + 2), fx = c(as.numeric(fx), 
+                                                           fx.lp, fx.logp), expert = factor(c(rep(expertnames, 
+                                                                                                  each = nxTotal), rep("linear pool", nxTotal), rep("log pool", 
+                                                                                                                                                    nxTotal)), levels = c(expertnames, "linear pool", "log pool")), 
                     ftype = factor(c(rep("individual", nxTotal * n.experts), 
-                                     rep("linear pool", nxTotal),rep("log pool", nxTotal)),
-                                   levels = c("individual","linear pool", "log pool")))
-  
+                                     rep("linear pool", nxTotal), rep("log pool", nxTotal)), 
+                                   levels = c("individual", "linear pool", "log pool")))
   df1$expert <- factor(df1$expert, levels = c(expertnames, 
                                               "linear pool", "log pool"))
   if (legend_full) {
     cols <- (scales::hue_pal())(n.experts + 2)
-    linetypes <- c(rep("dashed", n.experts), "solid","solid")
-    sizes <- lwd * c(rep(0.5, n.experts), 1.5,1.5)
+    linetypes <- c(rep("dashed", n.experts), "solid", "solid")
+    sizes <- lwd * c(rep(0.5, n.experts), 1.5, 1.5)
     names(cols) <- names(linetypes) <- names(sizes) <- c(expertnames, 
                                                          lpname)
     p1 <- ggplot(df1, aes(x = x, y = fx, colour = expert, 
@@ -977,12 +962,13 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
                                                                                    breaks = c(expertnames, lpname)) + scale_linetype_manual(values = linetypes, 
                                                                                                                                             breaks = c(expertnames, lpname)) + scale_size_manual(values = sizes, 
                                                                                                                                                                                                  breaks = c(expertnames, lpname))
-  }else {
+  }
+  else {
     p1 <- ggplot(df1, aes(x = x, y = fx, colour = ftype, 
                           linetype = ftype, size = ftype)) + scale_linetype_manual(name = "distribution", 
-                                                                                   values = c("dashed", "solid","solid")) + scale_size_manual(name = "distribution", 
-                                                                                                                                              values = lwd * c(0.5, 1.5, 1.5)) + scale_color_manual(name = "distribution", 
-                                                                                                                                                                                                    values = c("black", "red", "blue"))
+                                                                                   values = c("dashed", "solid", "solid")) + scale_size_manual(name = "distribution", 
+                                                                                                                                               values = lwd * c(0.5, 1.5, 1.5)) + scale_color_manual(name = "distribution", 
+                                                                                                                                                                                                     values = c("black", "red", "blue"))
   }
   if (legend_full) {
     for (i in 1:n.experts) {
@@ -995,7 +981,8 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
                                              expertnames[i]), aes(colour = expert))
       }
     }
-  } else {
+  }
+  else {
     for (i in 1:n.experts) {
       if (d[i] == "hist") {
         p1 <- p1 + geom_step(data = subset(df1, expert == 
@@ -1010,7 +997,8 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
   if (length(unique(d)) == 1 & d[1] == "hist") {
     p1 <- p1 + geom_step(data = subset(df1, expert == lpname), 
                          aes(colour = expert))
-  }else{
+  }
+  else {
     p1 <- p1 + geom_line(data = subset(df1, expert == lpname[1]), 
                          aes(colour = expert))
     p1 <- p1 + geom_line(data = subset(df1, expert == lpname[2]), 
@@ -1026,22 +1014,19 @@ expertdensity<-utils::getFromNamespace("expertdensity", "SHELF")
       ribbon_col <- "red"
     }
     p1 <- p1 + geom_ribbon(data = with(df1, subset(df1, 
-                                                   x <= ql & expert == lpname[1])), aes(ymax = fx, ymin = 0), 
-                           alpha = 0.2, show.legend = FALSE, colour = NA, fill = ribbon_col) + 
-      geom_ribbon(data = with(df1, subset(df1, x >= qu & 
-                                            expert == lpname[2])), aes(ymax = fx, ymin = 0), 
-                  alpha = 0.2, show.legend = FALSE, colour = NA, 
-                  fill = ribbon_col)
-    
+                                                   x <= ql & expert == lpname[1])), aes(ymax = fx, 
+                                                                                        ymin = 0), alpha = 0.2, show.legend = FALSE, colour = NA, 
+                           fill = ribbon_col) + geom_ribbon(data = with(df1, 
+                                                                        subset(df1, x >= qu & expert == lpname[2])), aes(ymax = fx, 
+                                                                                                                         ymin = 0), alpha = 0.2, show.legend = FALSE, colour = NA, 
+                                                            fill = ribbon_col)
     p1 <- p1 + geom_ribbon(data = with(df1, subset(df1, 
-                                                   x <= ql & expert == lpname[2])), aes(ymax = fx, ymin = 0), 
-                           alpha = 0.2, show.legend = FALSE, colour = NA, fill = ribbon_col) + 
-      geom_ribbon(data = with(df1, subset(df1, x >= qu & 
-                                            expert == lpname[2])), aes(ymax = fx, ymin = 0), 
-                  alpha = 0.2, show.legend = FALSE, colour = NA, 
-                  fill = ribbon_col)
-    
-    
+                                                   x <= ql & expert == lpname[2])), aes(ymax = fx, 
+                                                                                        ymin = 0), alpha = 0.2, show.legend = FALSE, colour = NA, 
+                           fill = ribbon_col) + geom_ribbon(data = with(df1, 
+                                                                        subset(df1, x >= qu & expert == lpname[2])), aes(ymax = fx, 
+                                                                                                                         ymin = 0), alpha = 0.2, show.legend = FALSE, colour = NA, 
+                                                            fill = ribbon_col)
   }
   if (lpname[1] == "marginal") {
     p1 <- p1 + theme(legend.title = element_blank())
@@ -2202,38 +2187,40 @@ lik_wei <- function (x, linpred, linpred.hat, model, data.stan ){
        f.bar = NULL, s = NULL, s.bar = NULL, logf.expert = logf.expert, logf.hat.expert = logf.hat.expert)
 }
 
-
 lik_lno <- function (x, linpred, linpred.hat, model, data.stan){
   dist = "lno"
-  
   sigma = as.numeric(rstan::extract(model)$alpha)
   sigma.hat = stats::median(sigma)
   logf <- matrix(unlist(lapply(1:nrow(linpred), function(i) {
-    data.stan$d * log(flexsurv::hlnorm(data.stan$t, (linpred[i, ]), 
-                             sigma[i])) + log(1 - stats::plnorm(data.stan$t, (linpred[i, 
-                             ]), sigma[i]))
+    data.stan$d * log(flexsurv::hlnorm(data.stan$t, (linpred[i, 
+    ]), sigma[i])) + log(1 - stats::plnorm(data.stan$t, 
+                                           (linpred[i, ]), sigma[i]))
   })), nrow = nrow(linpred), byrow = T)
   logf.hat <- matrix(data.stan$d * log(flexsurv::hlnorm(data.stan$t, 
-                                              (linpred.hat), sigma.hat)) + log(1 - stats::plnorm(data.stan$t, 
-                                                                                          (linpred.hat), sigma.hat)), nrow = 1)
+                                                        (linpred.hat), sigma.hat)) + log(1 - stats::plnorm(data.stan$t, 
+                                                                                                           (linpred.hat), sigma.hat)), nrow = 1)
   logf.expert <- rep(NA, nrow(linpred))
-
-  if(data.stan$St_indic == 1){
-    index_vec  <- data.stan$id_St
-  }else{
-    index_vec <- c(data.stan$id_trt,data.stan$id_comp)
-    
+  if (data.stan$St_indic == 1) {
+    index_vec <- data.stan$id_St
   }
-    
-  for(i in 1:nrow(linpred)){
-      logf.expert[i] <-  expert_like(data.stan, dist_surv = dist, param1 = sigma[i], param2 = exp(linpred[i,index_vec]))
+  else {
+    index_vec <- c(data.stan$id_trt, data.stan$id_comp)
   }
-  logf.hat.expert <- expert_like(data.stan, dist_surv = dist, param1 = sigma.hat, param2 = exp(linpred.hat[1,index_vec]))
-
-  npars <- 2 + sum(1 - apply(data.stan$X, 2, function(x) all(x ==0)))
+  for (i in 1:nrow(linpred)) {
+    logf.expert[i] <- expert_like(data.stan, dist_surv = dist, 
+                                  param1 = linpred[i, index_vec],
+                                  param2 = sigma[i])
+  }
+  logf.hat.expert <- expert_like(data.stan, dist_surv = dist,
+                                 param1 = linpred.hat[1, index_vec],
+                                 param2 = sigma.hat)
+  npars <- 2 + sum(1 - apply(data.stan$X, 2, function(x) all(x == 
+                                                               0)))
   list(logf = logf, logf.hat = logf.hat, npars = npars, f = NULL, 
-       f.bar = NULL, s = NULL, s.bar = NULL, logf.expert = logf.expert, logf.hat.expert = logf.hat.expert)
+       f.bar = NULL, s = NULL, s.bar = NULL, logf.expert = logf.expert, 
+       logf.hat.expert = logf.hat.expert)
 }
+
 
 lik_llo <- function (x, linpred, linpred.hat, model, data.stan){
   dist = "llo"
