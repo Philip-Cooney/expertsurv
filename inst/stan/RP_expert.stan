@@ -37,12 +37,12 @@ functions {
   }
 
 
-  real log_density_dist(real[ , ] params,
+  real log_density_dist(array[ , ] real params,
                         real x,int num_expert, int pool_type){
 
     // Evaluates the log density for a range of distributions
 
-    real dens[num_expert];
+    array[num_expert] real dens;
 
     for(i in 1:num_expert){
     if(params[i,1] == 1){
@@ -118,10 +118,10 @@ data {
   int id_trt;
   int id_comp;
 
-  int n_experts[n_time_expert];
+  array[n_time_expert] int n_experts;
   int pool_type;
 
-  real param_expert[max(n_experts),5,n_time_expert];
+  array[max(n_experts),5,n_time_expert] real param_expert;
   vector[St_indic ? n_time_expert : 0] time_expert;
 
   matrix[n_time_expert,M+2] B_expert;                  // matrix with basis for experts times
