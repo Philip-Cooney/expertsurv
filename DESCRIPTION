@@ -15,6 +15,8 @@ Description: This package modifies the `survHE` package to enable users to incor
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+URL: https://github.com/Philip-Cooney/expertsurv
+BugReports: https://github.com/Philip-Cooney/expertsurv/issues
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Biarch: true
